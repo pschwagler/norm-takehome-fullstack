@@ -1,0 +1,16 @@
+node_modules/
+.next/
+.git/
+.env
+.env.*
+__pycache__/
+*.pyc
+*.pyo
+data/
+frontend/
+tests/
+docs/design/
+.claude/
+.mcp.json
+*.md
+!requirements.txt

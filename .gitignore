@@ -10,6 +10,12 @@ yarn-error.log*
 
 # Environment variables
 .env
+frontend/.env.local
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
 
 # Build directories
 dist/
@@ -31,3 +37,6 @@ Thumbs.db
 
 # Dependency directories
 bower_components/
+
+# claude queries for thought process
+docs/claude-queries.md

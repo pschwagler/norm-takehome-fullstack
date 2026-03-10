@@ -1,2 +1,26 @@
-pydantic==2.5.3
-# add additional modules here
+# Core
+fastapi>=0.135
+uvicorn[standard]
+pydantic>=2.5
+python-multipart
+
+# LLM / RAG
+llama-index-core
+llama-index-llms-openai
+llama-index-embeddings-openai
+llama-index-vector-stores-qdrant
+qdrant-client
+
+# PDF parsing
+pymupdf4llm==0.0.17
+
+# Database
+sqlmodel
+
+# Logging
+python-json-logger
+
+# Testing
+pytest
+pytest-asyncio
+httpx

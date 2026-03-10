@@ -1,0 +1,28 @@
+{
+  "name": "norm-takehome-fullstack",
+  "version": "1.0.0",
+  "description": "This repository contains a client and server codebase.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pschwagler/norm-takehome-fullstack.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/pschwagler/norm-takehome-fullstack/issues"
+  },
+  "homepage": "https://github.com/pschwagler/norm-takehome-fullstack#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.58.2"
+  }
+}
