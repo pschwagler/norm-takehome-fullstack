@@ -10,12 +10,12 @@ import {
   MdOutlineMenuBook,
   MdDelete,
   MdOutlineNotifications,
+  MdModeEdit,
+  MdAccountBalance,
 } from 'react-icons/md';
 import { IoArrowRedoOutline } from 'react-icons/io5';
-import { MdModeEdit } from 'react-icons/md';
 import { IoIosSave } from 'react-icons/io';
 import { RiOrganizationChart } from 'react-icons/ri';
-import { HiOutlineDocumentPlus } from 'react-icons/hi2';
 import { AiOutlineAppstoreAdd } from 'react-icons/ai';
 import { BsFileEarmarkPlayFill } from 'react-icons/bs';
 
@@ -67,7 +67,7 @@ function iconFromEnum(
     case NavIconEnum.SHARE:
       return <IoArrowRedoOutline color={color} size="26px" />;
     case NavIconEnum.DOCUMENT:
-      return <HiOutlineDocumentPlus color={color} size="26px" />;
+      return <MdAccountBalance color={color} size="26px" />;
     case NavIconEnum.ARTIFACT:
       return <AiOutlineAppstoreAdd color={color} size="26px" />;
     case NavIconEnum.NOTIFICATIONS:

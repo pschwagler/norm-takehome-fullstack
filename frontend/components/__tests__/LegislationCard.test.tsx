@@ -2,14 +2,14 @@ import { ChakraProvider } from '@chakra-ui/react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import DocumentCard from '../DocumentCard';
-import type { DocumentResponse } from '@/lib/types';
+import LegislationCard from '../LegislationCard';
+import type { LegislationResponse } from '@/lib/types';
 
 function renderWith(ui: React.ReactNode) {
   return render(<ChakraProvider>{ui}</ChakraProvider>);
 }
 
-const doc: DocumentResponse = {
+const legislation: LegislationResponse = {
   id: 1,
   name: 'Northern Edicts',
   file_name: 'northern-edicts.pdf',
@@ -19,11 +19,11 @@ const doc: DocumentResponse = {
   uploaded_by: null,
 };
 
-describe('DocumentCard', () => {
-  it('renders document name, law count, and date', () => {
+describe('LegislationCard', () => {
+  it('renders legislation name, law count, and date', () => {
     renderWith(
-      <DocumentCard
-        document={doc}
+      <LegislationCard
+        legislation={legislation}
         isSelected={false}
         onSelect={() => {}}
         onDelete={() => {}}
@@ -38,8 +38,8 @@ describe('DocumentCard', () => {
     const user = userEvent.setup();
     const onSelect = vi.fn();
     renderWith(
-      <DocumentCard
-        document={doc}
+      <LegislationCard
+        legislation={legislation}
         isSelected={false}
         onSelect={onSelect}
         onDelete={() => {}}
@@ -53,8 +53,8 @@ describe('DocumentCard', () => {
   it('shows delete button on hover and calls onDelete', async () => {
     const onDelete = vi.fn();
     renderWith(
-      <DocumentCard
-        document={doc}
+      <LegislationCard
+        legislation={legislation}
         isSelected={false}
         onSelect={() => {}}
         onDelete={onDelete}
@@ -65,7 +65,7 @@ describe('DocumentCard', () => {
     fireEvent.mouseEnter(card);
 
     const deleteBtn = screen.getByRole('button', {
-      name: 'Delete document',
+      name: 'Delete legislation',
     });
     expect(deleteBtn).toBeInTheDocument();
 

@@ -5,67 +5,69 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import HeaderNav from '@/components/HeaderNav';
 import ConversationSidebar from '@/components/ConversationSidebar';
 import QueryInput from '@/components/QueryInput';
-import QueryResponse from '@/components/QueryResponse';
+import MessageThread from '@/components/MessageThread';
 import {
-  deleteConversation,
-  fetchConversation,
-  fetchConversations,
+  deleteThread,
+  fetchThread,
+  fetchThreads,
   streamQuery,
 } from '@/lib/api';
-import type { Citation, ConversationSummary } from '@/lib/types';
+import type { ActiveMessage, ThreadSummary } from '@/lib/types';
 
 export default function Page(): React.ReactNode {
-  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
-  const [activeId, setActiveId] = useState<number | null>(null);
-  const [response, setResponse] = useState('');
-  const [citations, setCitations] = useState<Citation[]>([]);
-  const [isStreaming, setIsStreaming] = useState(false);
+  const [threads, setThreads] = useState<ThreadSummary[]>([]);
+  const [activeThreadId, setActiveThreadId] = useState<number | null>(null);
+  const [messages, setMessages] = useState<ActiveMessage[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [isStreaming, setIsStreaming] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const toast = useToast();
 
-  const loadConversations = useCallback(() => {
-    fetchConversations()
-      .then(setConversations)
+  const loadThreads = useCallback(() => {
+    fetchThreads()
+      .then(setThreads)
       .catch(() => {});
   }, []);
 
   useEffect(() => {
-    loadConversations();
-  }, [loadConversations]);
+    loadThreads();
+  }, [loadThreads]);
 
   function handleNewConversation() {
     if (abortRef.current) abortRef.current.abort();
-    setActiveId(null);
-    setResponse('');
-    setCitations([]);
+    setActiveThreadId(null);
+    setMessages([]);
     setError(null);
     setIsStreaming(false);
   }
 
-  function handleSelectConversation(id: number) {
+  function handleSelectThread(id: number) {
     if (abortRef.current) abortRef.current.abort();
-    setActiveId(id);
+    setActiveThreadId(id);
     setIsStreaming(false);
     setError(null);
 
-    fetchConversation(id)
-      .then((conv) => {
-        setResponse(conv.response);
-        setCitations(conv.citations);
+    fetchThread(id)
+      .then((thread) => {
+        const loaded: ActiveMessage[] = thread.messages.map((m) => ({
+          role: m.role,
+          content: m.content,
+          citations: m.citations,
+          isStreaming: false,
+        }));
+        setMessages(loaded);
       })
       .catch((err: Error) => {
         setError(err.message);
-        setResponse('');
-        setCitations([]);
+        setMessages([]);
       });
   }
 
-  function handleDeleteConversation(id: number) {
-    deleteConversation(id)
+  function handleDeleteThread(id: number) {
+    deleteThread(id)
       .then(() => {
-        setConversations((prev) => prev.filter((c) => c.id !== id));
-        if (activeId === id) {
+        setThreads((prev) => prev.filter((t) => t.id !== id));
+        if (activeThreadId === id) {
           handleNewConversation();
         }
       })
@@ -75,63 +77,105 @@ export default function Page(): React.ReactNode {
   function handleSubmit(query: string) {
     if (abortRef.current) abortRef.current.abort();
 
-    setResponse('');
-    setCitations([]);
     setError(null);
     setIsStreaming(true);
-    setActiveId(null);
 
-    const ctrl = streamQuery(query, {
-      onToken(token) {
-        setResponse((prev) => prev + token);
+    // Append user message + empty assistant placeholder
+    const userMsg: ActiveMessage = {
+      role: 'user',
+      content: query,
+      citations: [],
+      isStreaming: false,
+    };
+    const assistantMsg: ActiveMessage = {
+      role: 'assistant',
+      content: '',
+      citations: [],
+      isStreaming: true,
+    };
+    setMessages((prev) => [...prev, userMsg, assistantMsg]);
+
+    const ctrl = streamQuery(
+      query,
+      {
+        onToken(token) {
+          setMessages((prev) => {
+            const updated = [...prev];
+            const last = { ...updated[updated.length - 1] };
+            last.content = last.content + token;
+            updated[updated.length - 1] = last;
+            return updated;
+          });
+        },
+        onCitations(cits) {
+          setMessages((prev) => {
+            const updated = [...prev];
+            const last = { ...updated[updated.length - 1] };
+            last.citations = cits;
+            updated[updated.length - 1] = last;
+            return updated;
+          });
+        },
+        onDone(threadId) {
+          setMessages((prev) => {
+            const updated = [...prev];
+            const last = { ...updated[updated.length - 1] };
+            last.isStreaming = false;
+            updated[updated.length - 1] = last;
+            return updated;
+          });
+          setActiveThreadId(threadId);
+          setIsStreaming(false);
+          loadThreads();
+        },
+        onError(errMsg) {
+          setError(errMsg);
+          setIsStreaming(false);
+          setMessages((prev) => {
+            const updated = [...prev];
+            const last = { ...updated[updated.length - 1] };
+            last.isStreaming = false;
+            updated[updated.length - 1] = last;
+            return updated;
+          });
+          toast({
+            title: 'Query failed',
+            description: errMsg,
+            status: 'error',
+            duration: 5000,
+            isClosable: true,
+          });
+        },
       },
-      onCitations(cits) {
-        setCitations(cits);
-      },
-      onDone() {
-        setIsStreaming(false);
-        loadConversations();
-      },
-      onError(errMsg) {
-        setError(errMsg);
-        setIsStreaming(false);
-        toast({
-          title: 'Query failed',
-          description: errMsg,
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
-      },
-    });
+      undefined,
+      activeThreadId ?? undefined
+    );
 
     abortRef.current = ctrl;
   }
 
-  const hasSubmitted = response.length > 0 || isStreaming || error !== null;
+  const hasMessages = messages.length > 0;
 
   return (
     <Flex h="100vh" direction="column">
       <HeaderNav signOut={() => {}} />
       <Flex flex={1} overflow="hidden">
         <ConversationSidebar
-          conversations={conversations}
-          activeId={activeId}
-          onSelect={handleSelectConversation}
-          onDelete={handleDeleteConversation}
+          threads={threads}
+          activeId={activeThreadId}
+          onSelect={handleSelectThread}
+          onDelete={handleDeleteThread}
           onNewConversation={handleNewConversation}
         />
-        <Box flex={1} overflow="auto" bg="#FBFBFB">
-          <Flex
-            direction="column"
-            align="center"
-            justify={hasSubmitted ? 'flex-start' : 'center'}
-            minH="full"
-            px={6}
-            py={hasSubmitted ? 6 : 0}
-            transition="all 0.3s"
-          >
-            {!hasSubmitted && (
+        <Flex flex={1} direction="column" bg="#FBFBFB" overflow="hidden">
+          {!hasMessages ? (
+            <Flex
+              flex={1}
+              direction="column"
+              align="center"
+              justify="center"
+              px={6}
+            >
               <VStack spacing={2} mb={6}>
                 <Text
                   fontSize="2xl"
@@ -145,20 +189,44 @@ export default function Page(): React.ReactNode {
                   Ask a question about the laws of the Seven Kingdoms
                 </Text>
               </VStack>
-            )}
-            <QueryInput onSubmit={handleSubmit} isLoading={isStreaming} />
-            {hasSubmitted && (
-              <Box mt={6} w="full" maxW="700px">
-                <QueryResponse
-                  response={response}
-                  citations={citations}
-                  isStreaming={isStreaming}
-                  error={error}
-                />
+              <QueryInput onSubmit={handleSubmit} isLoading={isStreaming} />
+            </Flex>
+          ) : (
+            <>
+              <Box flex={1} overflowY="auto" px={6} py={6}>
+                <MessageThread messages={messages} />
+                {error && (
+                  <Box
+                    mt={4}
+                    bg="red.50"
+                    border="1px solid"
+                    borderColor="red.200"
+                    borderRadius="md"
+                    px={4}
+                    py={3}
+                    maxW="700px"
+                    mx="auto"
+                  >
+                    <Text color="red.600" fontSize="sm">
+                      {error}
+                    </Text>
+                  </Box>
+                )}
               </Box>
-            )}
-          </Flex>
-        </Box>
+              <Box
+                px={6}
+                py={4}
+                borderTop="1px solid"
+                borderColor="#DBDCE1"
+                bg="#FBFBFB"
+              >
+                <Flex justify="center">
+                  <QueryInput onSubmit={handleSubmit} isLoading={isStreaming} />
+                </Flex>
+              </Box>
+            </>
+          )}
+        </Flex>
       </Flex>
     </Flex>
   );

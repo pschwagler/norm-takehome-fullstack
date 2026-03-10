@@ -8,22 +8,38 @@ export interface Citation {
 export interface QueryRequest {
   query: string;
   jurisdiction?: string;
+  thread_id?: number;
 }
 
-export interface ConversationSummary {
+export interface Message {
   id: number;
-  query: string;
-  jurisdiction: string | null;
-  created_at: string;
-}
-
-export interface ConversationDetail {
-  id: number;
-  query: string;
-  response: string;
+  role: 'user' | 'assistant';
+  content: string;
   citations: Citation[];
-  jurisdiction: string | null;
   created_at: string;
+}
+
+export interface ThreadSummary {
+  id: number;
+  title: string;
+  jurisdiction: string | null;
+  message_count: number;
+  created_at: string;
+}
+
+export interface ThreadDetail {
+  id: number;
+  title: string;
+  jurisdiction: string | null;
+  messages: Message[];
+  created_at: string;
+}
+
+export interface ActiveMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  citations: Citation[];
+  isStreaming: boolean;
 }
 
 export interface LawResponse {
@@ -33,7 +49,7 @@ export interface LawResponse {
   section_title: string | null;
   text: string;
   jurisdiction: string;
-  document_id: number;
+  legislation_id: number;
 }
 
 export interface LawGroup {
@@ -42,7 +58,7 @@ export interface LawGroup {
   laws: LawResponse[];
 }
 
-export interface DocumentResponse {
+export interface LegislationResponse {
   id: number;
   name: string;
   file_name: string;
@@ -52,7 +68,7 @@ export interface DocumentResponse {
   uploaded_by: string | null;
 }
 
-export interface DocumentUploadResponse {
+export interface LegislationUploadResponse {
   id: number;
   name: string;
   file_name: string;
@@ -62,7 +78,7 @@ export interface DocumentUploadResponse {
 
 export interface HealthResponse {
   status: string;
-  documents_loaded: number;
+  legislation_loaded: number;
   laws_indexed: number;
 }
 

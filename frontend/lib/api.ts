@@ -1,21 +1,17 @@
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import type {
   Citation,
-  ConversationDetail,
-  ConversationSummary,
-  DocumentResponse,
-  DocumentUploadResponse,
+  LegislationResponse,
+  LegislationUploadResponse,
   LawGroup,
   LawResponse,
+  ThreadDetail,
+  ThreadSummary,
 } from './types';
 
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:80';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
 
-async function apiFetch<T>(
-  path: string,
-  init?: RequestInit
-): Promise<T> {
+async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     ...init,
     headers: {
@@ -36,21 +32,26 @@ async function apiFetch<T>(
 export interface StreamCallbacks {
   onToken: (token: string) => void;
   onCitations: (citations: Citation[]) => void;
-  onDone: () => void;
+  onDone: (threadId: number) => void;
   onError: (error: string) => void;
 }
 
 export function streamQuery(
   query: string,
   callbacks: StreamCallbacks,
-  jurisdiction?: string
+  jurisdiction?: string,
+  threadId?: number
 ): AbortController {
   const ctrl = new AbortController();
 
   fetchEventSource(`${API_URL}/query`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query, jurisdiction }),
+    body: JSON.stringify({
+      query,
+      jurisdiction,
+      thread_id: threadId ?? null,
+    }),
     signal: ctrl.signal,
 
     onmessage(ev) {
@@ -61,7 +62,8 @@ export function streamQuery(
         const parsed = JSON.parse(ev.data);
         callbacks.onCitations(parsed.data);
       } else if (ev.event === 'done') {
-        callbacks.onDone();
+        const parsed = JSON.parse(ev.data);
+        callbacks.onDone(parsed.thread_id);
       } else if (ev.event === 'error') {
         const parsed = JSON.parse(ev.data);
         callbacks.onError(parsed.detail ?? 'Query failed');
@@ -81,28 +83,24 @@ export function streamQuery(
   return ctrl;
 }
 
-// --- Conversations ---
+// --- Threads ---
 
-export function fetchConversations(): Promise<ConversationSummary[]> {
-  return apiFetch('/conversations');
+export function fetchThreads(): Promise<ThreadSummary[]> {
+  return apiFetch('/threads');
 }
 
-export function fetchConversation(
-  id: number
-): Promise<ConversationDetail> {
-  return apiFetch(`/conversations/${id}`);
+export function fetchThread(id: number): Promise<ThreadDetail> {
+  return apiFetch(`/threads/${id}`);
 }
 
-export function deleteConversation(id: number): Promise<void> {
-  return apiFetch(`/conversations/${id}`, { method: 'DELETE' });
+export function deleteThread(id: number): Promise<void> {
+  return apiFetch(`/threads/${id}`, { method: 'DELETE' });
 }
 
 // --- Laws ---
 
-export function fetchLaws(
-  documentId?: number
-): Promise<LawGroup[]> {
-  const params = documentId ? `?document_id=${documentId}` : '';
+export function fetchLaws(legislationId?: number): Promise<LawGroup[]> {
+  const params = legislationId ? `?legislation_id=${legislationId}` : '';
   return apiFetch(`/laws${params}`);
 }
 
@@ -110,29 +108,27 @@ export function fetchLaw(id: number): Promise<LawResponse> {
   return apiFetch(`/laws/${id}`);
 }
 
-// --- Documents ---
+// --- Legislation ---
 
-export function fetchDocuments(): Promise<DocumentResponse[]> {
-  return apiFetch('/documents');
+export function fetchLegislation(): Promise<LegislationResponse[]> {
+  return apiFetch('/legislation');
 }
 
-export function fetchDocument(
-  id: number
-): Promise<DocumentResponse> {
-  return apiFetch(`/documents/${id}`);
+export function fetchLegislationById(id: number): Promise<LegislationResponse> {
+  return apiFetch(`/legislation/${id}`);
 }
 
-export async function uploadDocument(
+export async function uploadLegislation(
   file: File,
   name: string,
   jurisdiction: string
-): Promise<DocumentUploadResponse> {
+): Promise<LegislationUploadResponse> {
   const form = new FormData();
   form.append('file', file);
   form.append('name', name);
   form.append('jurisdiction', jurisdiction);
 
-  const res = await fetch(`${API_URL}/documents`, {
+  const res = await fetch(`${API_URL}/legislation`, {
     method: 'POST',
     body: form,
   });
@@ -143,6 +139,6 @@ export async function uploadDocument(
   return res.json();
 }
 
-export function deleteDocument(id: number): Promise<void> {
-  return apiFetch(`/documents/${id}`, { method: 'DELETE' });
+export function deleteLegislation(id: number): Promise<void> {
+  return apiFetch(`/legislation/${id}`, { method: 'DELETE' });
 }

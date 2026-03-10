@@ -1,19 +1,12 @@
 'use client';
 
-import {
-  Box,
-  Flex,
-  IconButton,
-  Text,
-  Tooltip,
-  VStack,
-} from '@chakra-ui/react';
+import { Box, Flex, IconButton, Text, Tooltip, VStack } from '@chakra-ui/react';
 import { useState } from 'react';
-import { MdDelete } from 'react-icons/md';
-import type { ConversationSummary } from '@/lib/types';
+import { MdDelete, MdModeEdit } from 'react-icons/md';
+import type { ThreadSummary } from '@/lib/types';
 
 interface ConversationSidebarProps {
-  conversations: ConversationSummary[];
+  threads: ThreadSummary[];
   activeId: number | null;
   onSelect: (id: number) => void;
   onDelete: (id: number) => void;
@@ -26,7 +19,7 @@ function formatDate(iso: string): string {
 }
 
 export default function ConversationSidebar({
-  conversations,
+  threads,
   activeId,
   onSelect,
   onDelete,
@@ -47,7 +40,7 @@ export default function ConversationSidebar({
       flexDirection="column"
       h="full"
     >
-      <Flex px={isExpanded ? 3 : 1} py={2} gap={2} align="center">
+      <Flex px={isExpanded ? 3 : 1} py={2} align="center">
         <Tooltip label={isExpanded ? 'Collapse' : 'Expand'} placement="right">
           <IconButton
             aria-label="Toggle sidebar"
@@ -69,49 +62,36 @@ export default function ConversationSidebar({
             onClick={() => setIsExpanded(!isExpanded)}
           />
         </Tooltip>
+      </Flex>
+      <Flex px={isExpanded ? 3 : 1} pb={2} gap={2} align="center">
         <Tooltip label="New Conversation" placement="right">
           <IconButton
             aria-label="New Conversation"
-            icon={
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M12.6667 0.666504H3.33333C2.59695 0.666504 2 1.26346 2 1.99984V15.3332L8 11.9998L14 15.3332V1.99984C14 1.26346 13.403 0.666504 12.6667 0.666504ZM12.6667 12.6665L8 10.0732L3.33333 12.6665V1.99984H12.6667V12.6665Z"
-                  fill="#5E6272"
-                />
-                <path d="M7.33333 4H8.66667V6.66667H11.3333V8H8.66667V10.6667H7.33333V8H4.66667V6.66667H7.33333V4Z" fill="#5E6272" />
-              </svg>
-            }
+            icon={<MdModeEdit color="#5E6272" size={20} />}
             variant="ghost"
             size="sm"
             onClick={onNewConversation}
           />
         </Tooltip>
         {isExpanded && (
-          <Text fontSize="xs" color="#5E6272" fontWeight="semibold" noOfLines={1}>
+          <Text
+            fontSize="xs"
+            color="#5E6272"
+            fontWeight="semibold"
+            noOfLines={1}
+          >
             New Conversation
           </Text>
         )}
       </Flex>
 
       {isExpanded && (
-        <VStack
-          spacing={0}
-          align="stretch"
-          overflowY="auto"
-          flex={1}
-          px={1}
-        >
-          {conversations.map((conv) => (
-            <ConversationItem
-              key={conv.id}
-              conversation={conv}
-              isActive={conv.id === activeId}
+        <VStack spacing={0} align="stretch" overflowY="auto" flex={1} px={1}>
+          {threads.map((thread) => (
+            <ThreadItem
+              key={thread.id}
+              thread={thread}
+              isActive={thread.id === activeId}
               onSelect={onSelect}
               onDelete={onDelete}
             />
@@ -122,19 +102,19 @@ export default function ConversationSidebar({
   );
 }
 
-interface ConversationItemProps {
-  conversation: ConversationSummary;
+interface ThreadItemProps {
+  thread: ThreadSummary;
   isActive: boolean;
   onSelect: (id: number) => void;
   onDelete: (id: number) => void;
 }
 
-function ConversationItem({
-  conversation,
+function ThreadItem({
+  thread,
   isActive,
   onSelect,
   onDelete,
-}: ConversationItemProps): React.ReactNode {
+}: ThreadItemProps): React.ReactNode {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
@@ -147,7 +127,7 @@ function ConversationItem({
       _hover={{ bg: isActive ? '#EEEBFF' : '#F5F5F5' }}
       align="center"
       justify="space-between"
-      onClick={() => onSelect(conversation.id)}
+      onClick={() => onSelect(thread.id)}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -158,15 +138,15 @@ function ConversationItem({
           color={isActive ? '#2800D7' : '#32343C'}
           fontWeight={isActive ? 'semibold' : 'normal'}
         >
-          {conversation.query}
+          {thread.title}
         </Text>
         <Text fontSize="xs" color="#5E6272">
-          {formatDate(conversation.created_at)}
+          {formatDate(thread.created_at)}
         </Text>
       </Box>
       {isHovered && (
         <IconButton
-          aria-label="Delete conversation"
+          aria-label="Delete thread"
           icon={<MdDelete />}
           variant="ghost"
           size="xs"
@@ -174,7 +154,7 @@ function ConversationItem({
           _hover={{ color: 'red.500' }}
           onClick={(e) => {
             e.stopPropagation();
-            onDelete(conversation.id);
+            onDelete(thread.id);
           }}
         />
       )}

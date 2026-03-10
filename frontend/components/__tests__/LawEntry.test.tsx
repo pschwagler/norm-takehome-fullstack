@@ -17,7 +17,7 @@ describe('LawEntry', () => {
       section_title: null,
       text: 'All conflicts shall be resolved through the Crown.',
       jurisdiction: 'Kingdom-wide',
-      document_id: 1,
+      legislation_id: 1,
     };
     renderWith(<LawEntry law={law} />);
 
@@ -35,13 +35,11 @@ describe('LawEntry', () => {
       section_title: null,
       text: 'Deep law about the Watch.',
       jurisdiction: 'Kingdom-wide',
-      document_id: 1,
+      legislation_id: 1,
     };
     renderWith(<LawEntry law={deep} />);
 
     expect(screen.getByText('10.1.1.4')).toBeInTheDocument();
-    expect(
-      screen.getByText('Deep law about the Watch.')
-    ).toBeInTheDocument();
+    expect(screen.getByText('Deep law about the Watch.')).toBeInTheDocument();
   });
 });

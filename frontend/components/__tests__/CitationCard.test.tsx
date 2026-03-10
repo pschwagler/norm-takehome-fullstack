@@ -35,12 +35,11 @@ describe('CitationCard', () => {
     };
     renderWith(<CitationCard citation={longCitation} index={1} />);
 
-    const card = screen.getByText(/Section 2\.1/).closest('[role="button"]')
-      ?? screen.getByText(/Section 2\.1/).parentElement!.parentElement!;
+    const card =
+      screen.getByText(/Section 2\.1/).closest('[role="button"]') ??
+      screen.getByText(/Section 2\.1/).parentElement!.parentElement!;
     await user.click(card);
 
-    expect(
-      screen.getByText(longCitation.text)
-    ).toBeInTheDocument();
+    expect(screen.getByText(longCitation.text)).toBeInTheDocument();
   });
 });

@@ -2,37 +2,39 @@ import { ChakraProvider } from '@chakra-ui/react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import DocumentsPage from '../page';
+import LegislationPage from '../page';
 
 vi.mock('@/lib/api', () => ({
-  fetchDocuments: vi.fn(),
-  deleteDocument: vi.fn(),
-  uploadDocument: vi.fn(),
+  fetchLegislation: vi.fn(),
+  deleteLegislation: vi.fn(),
+  uploadLegislation: vi.fn(),
   fetchLaws: vi.fn(),
 }));
 
-import { fetchDocuments, uploadDocument } from '@/lib/api';
+import { fetchLegislation, uploadLegislation } from '@/lib/api';
 
 function renderWith(ui: React.ReactNode) {
   return render(<ChakraProvider>{ui}</ChakraProvider>);
 }
 
-describe('Documents Page', () => {
+describe('Legislation Page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (fetchDocuments as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (fetchLegislation as ReturnType<typeof vi.fn>).mockResolvedValue([]);
   });
 
-  it('renders upload drop zone and empty document list', async () => {
-    renderWith(<DocumentsPage />);
-    expect(screen.getByText('Documents')).toBeInTheDocument();
+  it('renders upload drop zone and empty legislation list', async () => {
+    renderWith(<LegislationPage />);
+    expect(screen.getByText('Legislation')).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByText('No documents uploaded yet.')).toBeInTheDocument();
+      expect(
+        screen.getByText('No legislation uploaded yet.')
+      ).toBeInTheDocument();
     });
   });
 
-  it('loads documents on mount', async () => {
-    const mockDocs = [
+  it('loads legislation on mount', async () => {
+    const mockLegislation = [
       {
         id: 1,
         name: 'Laws of the Seven Kingdoms',
@@ -43,12 +45,14 @@ describe('Documents Page', () => {
         uploaded_by: null,
       },
     ];
-    (fetchDocuments as ReturnType<typeof vi.fn>).mockResolvedValue(mockDocs);
+    (fetchLegislation as ReturnType<typeof vi.fn>).mockResolvedValue(
+      mockLegislation
+    );
 
-    renderWith(<DocumentsPage />);
+    renderWith(<LegislationPage />);
 
     await waitFor(() => {
-      expect(fetchDocuments).toHaveBeenCalledOnce();
+      expect(fetchLegislation).toHaveBeenCalledOnce();
     });
 
     await waitFor(() => {
@@ -59,7 +63,7 @@ describe('Documents Page', () => {
   });
 
   it('renders upload drop zone', () => {
-    renderWith(<DocumentsPage />);
+    renderWith(<LegislationPage />);
     expect(
       screen.getByText(/drag.*pdf|drop.*pdf|click.*upload/i)
     ).toBeInTheDocument();

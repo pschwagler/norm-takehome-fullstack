@@ -11,10 +11,10 @@ _NODE_UUID_NS = uuid.UUID("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
 logger = logging.getLogger(__name__)
 
 
-class DocumentService:
+class LegislationService:
     """Parses legislation PDFs into structured law entries and LlamaIndex nodes."""
 
-    def create_documents(self, file_path: str) -> list[ParsedLaw]:
+    def create_legislation(self, file_path: str) -> list[ParsedLaw]:
         """Parse a PDF and return structured law entries."""
         laws = parse_pdf(file_path)
         logger.info(
@@ -26,8 +26,8 @@ class DocumentService:
     def create_nodes(
         self,
         parsed_laws: list[ParsedLaw],
-        document_id: int,
-        document_name: str,
+        legislation_id: int,
+        legislation_name: str,
         jurisdiction: str,
     ) -> tuple[list[TextNode], list[TextNode]]:
         """Build leaf (law-level) and parent (topic-level) TextNodes.
@@ -46,9 +46,9 @@ class DocumentService:
 
         for topic_name, topic_laws in topics.items():
             topic_num = topic_number_map.get(topic_name, "0")
-            parent_id = str(uuid.uuid5(
-                _NODE_UUID_NS, f"doc_{document_id}_topic_{topic_num}"
-            ))
+            parent_id = str(
+                uuid.uuid5(_NODE_UUID_NS, f"doc_{legislation_id}_topic_{topic_num}")
+            )
 
             # Build parent chunk (all laws concatenated)
             parent_text = f"{topic_num}. {topic_name}\n"
@@ -59,27 +59,27 @@ class DocumentService:
                 id_=parent_id,
                 text=parent_text.strip(),
                 metadata={
-                    "document_name": document_name,
-                    "document_id": document_id,
+                    "legislation_name": legislation_name,
+                    "legislation_id": legislation_id,
                     "topic": topic_name,
                     "section": topic_num,
                     "jurisdiction": jurisdiction,
                     "chunk_type": "topic",
                 },
-                excluded_llm_metadata_keys=["chunk_type", "document_id"],
-                excluded_embed_metadata_keys=["chunk_type", "document_id"],
+                excluded_llm_metadata_keys=["chunk_type", "legislation_id"],
+                excluded_embed_metadata_keys=["chunk_type", "legislation_id"],
             )
 
             # Build leaf chunks
             child_infos = []
             for law in topic_laws:
-                leaf_id = str(uuid.uuid5(
-                    _NODE_UUID_NS, f"doc_{document_id}_law_{law.section}"
-                ))
+                leaf_id = str(
+                    uuid.uuid5(_NODE_UUID_NS, f"doc_{legislation_id}_law_{law.section}")
+                )
 
                 metadata = {
-                    "document_name": document_name,
-                    "document_id": document_id,
+                    "legislation_name": legislation_name,
+                    "legislation_id": legislation_id,
                     "topic": topic_name,
                     "section": law.section,
                     "jurisdiction": jurisdiction,
@@ -92,13 +92,13 @@ class DocumentService:
                     id_=leaf_id,
                     text=law.text,
                     metadata=metadata,
-                    excluded_llm_metadata_keys=["chunk_type", "document_id"],
-                    excluded_embed_metadata_keys=["chunk_type", "document_id"],
+                    excluded_llm_metadata_keys=["chunk_type", "legislation_id"],
+                    excluded_embed_metadata_keys=["chunk_type", "legislation_id"],
                 )
 
                 # Set parent relationship
-                leaf_node.relationships[NodeRelationship.PARENT] = (
-                    RelatedNodeInfo(node_id=parent_id)
+                leaf_node.relationships[NodeRelationship.PARENT] = RelatedNodeInfo(
+                    node_id=parent_id
                 )
                 leaf_nodes.append(leaf_node)
                 child_infos.append(RelatedNodeInfo(node_id=leaf_id))
@@ -111,7 +111,7 @@ class DocumentService:
         logger.info(
             "Created nodes",
             extra={
-                "document_id": document_id,
+                "legislation_id": legislation_id,
                 "parent_count": len(parent_nodes),
                 "leaf_count": len(leaf_nodes),
             },

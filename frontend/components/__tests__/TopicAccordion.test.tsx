@@ -21,7 +21,7 @@ const groups: LawGroup[] = [
         section_title: null,
         text: 'All conflicts shall be resolved.',
         jurisdiction: 'Kingdom-wide',
-        document_id: 1,
+        legislation_id: 1,
       },
       {
         id: 2,
@@ -30,7 +30,7 @@ const groups: LawGroup[] = [
         section_title: null,
         text: 'No house shall wage private war.',
         jurisdiction: 'Kingdom-wide',
-        document_id: 1,
+        legislation_id: 1,
       },
     ],
   },

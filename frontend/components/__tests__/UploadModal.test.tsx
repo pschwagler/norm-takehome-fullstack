@@ -24,10 +24,8 @@ describe('UploadModal', () => {
       />
     );
     expect(screen.getByText('File: laws.pdf')).toBeInTheDocument();
-    expect(screen.getByText('Document Name')).toBeInTheDocument();
-    expect(
-      screen.getByText('Jurisdiction (optional)')
-    ).toBeInTheDocument();
+    expect(screen.getByText('Legislation Name')).toBeInTheDocument();
+    expect(screen.getByText('Jurisdiction (optional)')).toBeInTheDocument();
   });
 
   it('calls onUpload with name and default jurisdiction', async () => {

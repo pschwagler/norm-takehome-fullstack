@@ -12,21 +12,23 @@ from pythonjsonlogger import json as jsonlog
 from sqlmodel import Session, func, select
 
 from app import conversation_service
+from app.citation_filter import filter_relevant_citations
 from app.database import get_session
-from app.document_service import DocumentService
+from app.legislation_service import LegislationService
 from app.models import (
     Citation,
-    ConversationResponse,
-    ConversationSummary,
-    DocumentResponse,
-    DocumentUploadResponse,
     HealthResponse,
     Law,
     LawGroupResponse,
     LawResponse,
-    LegislationDocument,
+    Legislation,
+    LegislationResponse,
+    LegislationUploadResponse,
+    MessageResponse,
     Output,
     QueryRequest,
+    ThreadDetail,
+    ThreadSummary,
 )
 from app.qdrant_service import QdrantService, detect_jurisdiction
 from app.startup import UPLOAD_DIR, startup
@@ -42,7 +44,7 @@ logging.basicConfig(level=logging.INFO, handlers=[_handler])
 logger = logging.getLogger(__name__)
 
 qdrant_service = QdrantService()
-doc_service = DocumentService()
+legislation_service = LegislationService()
 
 
 @asynccontextmanager
@@ -69,13 +71,11 @@ app.add_middleware(
 
 @app.get("/health", response_model=HealthResponse)
 def health(session: Session = Depends(get_session)):
-    doc_count = session.exec(
-        select(func.count(LegislationDocument.id))
-    ).one()
+    legislation_count = session.exec(select(func.count(Legislation.id))).one()
     law_count = session.exec(select(func.count(Law.id))).one()
     return HealthResponse(
         status="ok",
-        documents_loaded=doc_count,
+        legislation_loaded=legislation_count,
         laws_indexed=law_count,
     )
 
@@ -100,8 +100,18 @@ async def query_laws(request: QueryRequest):
             full_response = ""
             citations: list[Citation] = []
 
+            # Load chat history if thread_id provided
+            chat_history: list[tuple[str, str]] = []
+            if request.thread_id is not None:
+                from app.database import engine
+
+                with Session(engine) as session:
+                    chat_history = conversation_service.get_thread_history(
+                        session, request.thread_id
+                    )
+
             async for token, citation_list in qdrant_service.aquery(
-                request.query, jurisdiction
+                request.query, jurisdiction, chat_history
             ):
                 if citation_list is not None:
                     citations = citation_list
@@ -109,36 +119,55 @@ async def query_laws(request: QueryRequest):
                     full_response += token
                     yield _sse(json.dumps({"data": token}), "token")
 
+            # Filter citations for relevance
+            citations = await filter_relevant_citations(
+                request.query, full_response, citations
+            )
+
             # Send citations
             yield _sse(
-                json.dumps(
-                    {"data": [c.model_dump() for c in citations]}
-                ),
+                json.dumps({"data": [c.model_dump() for c in citations]}),
                 "citations",
             )
 
-            # Send complete output
-            output = Output(
-                query=request.query,
-                response=full_response,
-                citations=citations,
-            )
-            yield _sse(output.model_dump_json(), "done")
-
-            # Fire-and-forget: save conversation
+            # Persist thread + messages
+            thread_id = request.thread_id
             try:
                 from app.database import engine
 
                 with Session(engine) as session:
-                    conversation_service.create_conversation(
+                    if thread_id is None:
+                        thread = conversation_service.create_thread(
+                            session=session,
+                            first_query=request.query,
+                            jurisdiction=jurisdiction,
+                        )
+                        thread_id = thread.id
+
+                    conversation_service.add_message(
                         session=session,
-                        query=request.query,
-                        response=full_response,
+                        thread_id=thread_id,
+                        role="user",
+                        content=request.query,
+                    )
+                    conversation_service.add_message(
+                        session=session,
+                        thread_id=thread_id,
+                        role="assistant",
+                        content=full_response,
                         citations=citations,
-                        jurisdiction=jurisdiction,
                     )
             except Exception:
-                logger.exception("Failed to save conversation")
+                logger.exception("Failed to save thread/messages")
+
+            # Send done with thread_id
+            done_payload = Output(
+                query=request.query,
+                response=full_response,
+                citations=citations,
+            ).model_dump()
+            done_payload["thread_id"] = thread_id
+            yield _sse(json.dumps(done_payload), "done")
 
         except Exception as e:
             logger.exception("Query failed")
@@ -155,13 +184,13 @@ async def query_laws(request: QueryRequest):
 
 @app.get("/laws", response_model=list[LawGroupResponse])
 def get_laws(
-    document_id: Optional[int] = None,
+    legislation_id: Optional[int] = None,
     jurisdiction: Optional[str] = None,
     session: Session = Depends(get_session),
 ):
     statement = select(Law)
-    if document_id is not None:
-        statement = statement.where(Law.document_id == document_id)
+    if legislation_id is not None:
+        statement = statement.where(Law.legislation_id == legislation_id)
     if jurisdiction is not None:
         statement = statement.where(Law.jurisdiction == jurisdiction)
 
@@ -187,7 +216,7 @@ def get_laws(
                     section_title=law.section_title,
                     text=law.text,
                     jurisdiction=law.jurisdiction,
-                    document_id=law.document_id,
+                    legislation_id=law.legislation_id,
                 )
                 for law in grouped[topic]
             ],
@@ -208,15 +237,15 @@ def get_law(law_id: int, session: Session = Depends(get_session)):
         section_title=law.section_title,
         text=law.text,
         jurisdiction=law.jurisdiction,
-        document_id=law.document_id,
+        legislation_id=law.legislation_id,
     )
 
 
-# --- Documents ---
+# --- Legislation ---
 
 
-@app.post("/documents", response_model=DocumentUploadResponse, status_code=201)
-async def upload_document(
+@app.post("/legislation", response_model=LegislationUploadResponse, status_code=201)
+async def upload_legislation(
     file: UploadFile = File(...),
     name: str = Form(...),
     jurisdiction: str = Form("Kingdom-wide"),
@@ -227,9 +256,7 @@ async def upload_document(
 
     content = await file.read()
     if len(content) > 10 * 1024 * 1024:
-        raise HTTPException(
-            status_code=400, detail="File exceeds 10MB limit"
-        )
+        raise HTTPException(status_code=400, detail="File exceeds 10MB limit")
 
     # Save file
     os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -239,7 +266,7 @@ async def upload_document(
 
     # Parse PDF
     try:
-        parsed_laws = doc_service.create_documents(file_path)
+        parsed_laws = legislation_service.create_legislation(file_path)
     except Exception as e:
         os.remove(file_path)
         raise HTTPException(
@@ -255,19 +282,19 @@ async def upload_document(
         )
 
     # Persist to database
-    document = LegislationDocument(
+    legislation = Legislation(
         name=name,
         file_name=file.filename,
         file_path=file_path,
         jurisdiction=jurisdiction,
     )
-    session.add(document)
+    session.add(legislation)
     session.commit()
-    session.refresh(document)
+    session.refresh(legislation)
 
     for parsed in parsed_laws:
         law = Law(
-            document_id=document.id,
+            legislation_id=legislation.id,
             section=parsed.section,
             topic=parsed.topic,
             section_title=parsed.section_title,
@@ -278,150 +305,145 @@ async def upload_document(
     session.commit()
 
     # Index into Qdrant
-    leaf_nodes, all_nodes = doc_service.create_nodes(
-        parsed_laws, document.id, document.name, jurisdiction
+    leaf_nodes, all_nodes = legislation_service.create_nodes(
+        parsed_laws, legislation.id, legislation.name, jurisdiction
     )
     qdrant_service.load(leaf_nodes, all_nodes)
 
     logger.info(
-        "Uploaded document",
+        "Uploaded legislation",
         extra={
-            "document_id": document.id,
+            "legislation_id": legislation.id,
             "name": name,
             "laws_count": len(parsed_laws),
         },
     )
 
-    return DocumentUploadResponse(
-        id=document.id,
-        name=document.name,
-        file_name=document.file_name,
+    return LegislationUploadResponse(
+        id=legislation.id,
+        name=legislation.name,
+        file_name=legislation.file_name,
         laws_count=len(parsed_laws),
-        uploaded_at=document.uploaded_at,
+        uploaded_at=legislation.uploaded_at,
     )
 
 
-@app.get("/documents", response_model=list[DocumentResponse])
-def get_documents(session: Session = Depends(get_session)):
-    documents = list(session.exec(select(LegislationDocument)).all())
+@app.get("/legislation", response_model=list[LegislationResponse])
+def get_legislation_list(session: Session = Depends(get_session)):
+    legislation_list = list(session.exec(select(Legislation)).all())
     result = []
-    for doc in documents:
+    for legislation in legislation_list:
         law_count = session.exec(
-            select(func.count(Law.id)).where(Law.document_id == doc.id)
+            select(func.count(Law.id)).where(Law.legislation_id == legislation.id)
         ).one()
         result.append(
-            DocumentResponse(
-                id=doc.id,
-                name=doc.name,
-                file_name=doc.file_name,
-                jurisdiction=doc.jurisdiction,
+            LegislationResponse(
+                id=legislation.id,
+                name=legislation.name,
+                file_name=legislation.file_name,
+                jurisdiction=legislation.jurisdiction,
                 laws_count=law_count,
-                uploaded_at=doc.uploaded_at,
-                uploaded_by=doc.uploaded_by,
+                uploaded_at=legislation.uploaded_at,
+                uploaded_by=legislation.uploaded_by,
             )
         )
     return result
 
 
-@app.get("/documents/{document_id}", response_model=DocumentResponse)
-def get_document(document_id: int, session: Session = Depends(get_session)):
-    doc = session.get(LegislationDocument, document_id)
-    if doc is None:
-        raise HTTPException(status_code=404, detail="Document not found")
+@app.get("/legislation/{legislation_id}", response_model=LegislationResponse)
+def get_legislation(legislation_id: int, session: Session = Depends(get_session)):
+    legislation = session.get(Legislation, legislation_id)
+    if legislation is None:
+        raise HTTPException(status_code=404, detail="Legislation not found")
     law_count = session.exec(
-        select(func.count(Law.id)).where(Law.document_id == doc.id)
+        select(func.count(Law.id)).where(Law.legislation_id == legislation.id)
     ).one()
-    return DocumentResponse(
-        id=doc.id,
-        name=doc.name,
-        file_name=doc.file_name,
-        jurisdiction=doc.jurisdiction,
+    return LegislationResponse(
+        id=legislation.id,
+        name=legislation.name,
+        file_name=legislation.file_name,
+        jurisdiction=legislation.jurisdiction,
         laws_count=law_count,
-        uploaded_at=doc.uploaded_at,
-        uploaded_by=doc.uploaded_by,
+        uploaded_at=legislation.uploaded_at,
+        uploaded_by=legislation.uploaded_by,
     )
 
 
-@app.delete("/documents/{document_id}", status_code=204)
-def delete_document(
-    document_id: int, session: Session = Depends(get_session)
-):
-    doc = session.get(LegislationDocument, document_id)
-    if doc is None:
-        raise HTTPException(status_code=404, detail="Document not found")
+@app.delete("/legislation/{legislation_id}", status_code=204)
+def delete_legislation(legislation_id: int, session: Session = Depends(get_session)):
+    legislation = session.get(Legislation, legislation_id)
+    if legislation is None:
+        raise HTTPException(status_code=404, detail="Legislation not found")
 
     # Delete from Qdrant
-    qdrant_service.delete_document(document_id)
+    qdrant_service.delete_legislation(legislation_id)
 
     # Delete laws from DB
     laws = list(
-        session.exec(select(Law).where(Law.document_id == document_id)).all()
+        session.exec(select(Law).where(Law.legislation_id == legislation_id)).all()
     )
     for law in laws:
         session.delete(law)
 
-    # Delete document from DB
-    session.delete(doc)
+    # Delete legislation from DB
+    session.delete(legislation)
     session.commit()
 
     # Delete file from filesystem
-    if os.path.exists(doc.file_path):
-        os.remove(doc.file_path)
+    if os.path.exists(legislation.file_path):
+        os.remove(legislation.file_path)
 
-    logger.info("Deleted document", extra={"document_id": document_id})
+    logger.info("Deleted legislation", extra={"legislation_id": legislation_id})
     return JSONResponse(status_code=204, content=None)
 
 
-# --- Conversations ---
+# --- Threads ---
 
 
-@app.get("/conversations", response_model=list[ConversationSummary])
-def get_conversations(
-    limit: int = 50, session: Session = Depends(get_session)
-):
-    conversations = conversation_service.list_conversations(session, limit)
+@app.get("/threads", response_model=list[ThreadSummary])
+def get_threads(limit: int = 50, session: Session = Depends(get_session)):
+    threads = conversation_service.list_threads(session, limit)
     return [
-        ConversationSummary(
-            id=c.id,
-            query=c.query,
-            jurisdiction=c.jurisdiction,
-            created_at=c.created_at,
+        ThreadSummary(
+            id=t.id,
+            title=t.title,
+            jurisdiction=t.jurisdiction,
+            message_count=conversation_service.get_thread_message_count(session, t.id),
+            created_at=t.created_at,
         )
-        for c in conversations
+        for t in threads
     ]
 
 
-@app.get(
-    "/conversations/{conversation_id}", response_model=ConversationResponse
-)
-def get_conversation(
-    conversation_id: int, session: Session = Depends(get_session)
-):
-    conv = conversation_service.get_conversation(session, conversation_id)
-    if conv is None:
-        raise HTTPException(
-            status_code=404, detail="Conversation not found"
+@app.get("/threads/{thread_id}", response_model=ThreadDetail)
+def get_thread(thread_id: int, session: Session = Depends(get_session)):
+    thread = conversation_service.get_thread(session, thread_id)
+    if thread is None:
+        raise HTTPException(status_code=404, detail="Thread not found")
+
+    messages = [
+        MessageResponse(
+            id=m.id,
+            role=m.role,
+            content=m.content,
+            citations=json.loads(m.citations),
+            created_at=m.created_at,
         )
-    citations = [Citation(**c) for c in json.loads(conv.citations)]
-    return ConversationResponse(
-        id=conv.id,
-        query=conv.query,
-        response=conv.response,
-        citations=citations,
-        jurisdiction=conv.jurisdiction,
-        created_at=conv.created_at,
+        for m in sorted(thread.messages, key=lambda m: m.created_at)
+    ]
+
+    return ThreadDetail(
+        id=thread.id,
+        title=thread.title,
+        jurisdiction=thread.jurisdiction,
+        messages=messages,
+        created_at=thread.created_at,
     )
 
 
-@app.delete("/conversations/{conversation_id}", status_code=204)
-def delete_conversation_endpoint(
-    conversation_id: int, session: Session = Depends(get_session)
-):
-    deleted = conversation_service.delete_conversation(
-        session, conversation_id
-    )
+@app.delete("/threads/{thread_id}", status_code=204)
+def delete_thread_endpoint(thread_id: int, session: Session = Depends(get_session)):
+    deleted = conversation_service.delete_thread(session, thread_id)
     if not deleted:
-        raise HTTPException(
-            status_code=404, detail="Conversation not found"
-        )
+        raise HTTPException(status_code=404, detail="Thread not found")
     return JSONResponse(status_code=204, content=None)

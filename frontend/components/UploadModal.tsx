@@ -54,7 +54,7 @@ export default function UploadModal({
             </Text>
           )}
           <FormControl isRequired mb={4}>
-            <FormLabel fontSize="sm">Document Name</FormLabel>
+            <FormLabel fontSize="sm">Legislation Name</FormLabel>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}

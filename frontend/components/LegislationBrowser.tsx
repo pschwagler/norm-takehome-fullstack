@@ -7,31 +7,31 @@ import { fetchLaws } from '@/lib/api';
 import type { LawGroup } from '@/lib/types';
 
 interface LegislationBrowserProps {
-  documentId: number | null;
+  legislationId: number | null;
 }
 
 export default function LegislationBrowser({
-  documentId,
+  legislationId,
 }: LegislationBrowserProps): React.ReactNode {
   const [groups, setGroups] = useState<LawGroup[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (documentId === null) {
+    if (legislationId === null) {
       setGroups([]);
       return;
     }
 
     setIsLoading(true);
     setError(null);
-    fetchLaws(documentId)
+    fetchLaws(legislationId)
       .then(setGroups)
       .catch((err: Error) => setError(err.message))
       .finally(() => setIsLoading(false));
-  }, [documentId]);
+  }, [legislationId]);
 
-  if (documentId === null) return null;
+  if (legislationId === null) return null;
 
   if (isLoading) {
     return (

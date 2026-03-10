@@ -31,17 +31,11 @@ def _parse_markdown(md_text: str) -> list[ParsedLaw]:
     lines = md_text.split("\n")
 
     # First pass: extract topics (bold top-level numbers like **1.** **Peace**)
-    topic_pattern = re.compile(
-        r"^\*\*(\d+)\.\*\*\s+\*\*([^*]+)\*\*\s*$"
-    )
+    topic_pattern = re.compile(r"^\*\*(\d+)\.\*\*\s+\*\*([^*]+)\*\*\s*$")
     # Sub-topic headers (bold, like **4.1.** **Trials of the Crown**)
-    subtopic_pattern = re.compile(
-        r"^\*\*(\d+\.\d+\.?)\*\*\s+\*\*([^*]+)\*\*\s*$"
-    )
+    subtopic_pattern = re.compile(r"^\*\*(\d+\.\d+\.?)\*\*\s+\*\*([^*]+)\*\*\s*$")
     # Law entries (non-bold numbered items like "4.2.1. Any knight...")
-    law_pattern = re.compile(
-        r"^(\d+(?:\.\d+)+)\.?\s+(.+)"
-    )
+    law_pattern = re.compile(r"^(\d+(?:\.\d+)+)\.?\s+(.+)")
 
     topics: dict[str, str] = {}  # topic_num -> topic_name
     subtopics: dict[str, str] = {}  # section_prefix -> section_title
@@ -103,10 +97,12 @@ def _parse_markdown(md_text: str) -> list[ParsedLaw]:
             # Clean up any markdown artifacts
             full_text = full_text.replace("  ", " ").strip()
 
-            raw_entries.append({
-                "section": section,
-                "text": full_text,
-            })
+            raw_entries.append(
+                {
+                    "section": section,
+                    "text": full_text,
+                }
+            )
             continue
 
         i += 1
@@ -122,12 +118,14 @@ def _parse_markdown(md_text: str) -> list[ParsedLaw]:
         # falls under a known sub-topic
         section_title = _find_section_title(section, subtopics)
 
-        laws.append(ParsedLaw(
-            section=section,
-            topic=topic,
-            section_title=section_title,
-            text=entry["text"],
-        ))
+        laws.append(
+            ParsedLaw(
+                section=section,
+                topic=topic,
+                section_title=section_title,
+                text=entry["text"],
+            )
+        )
 
     return laws
 

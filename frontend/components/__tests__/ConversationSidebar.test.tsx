@@ -3,23 +3,25 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import ConversationSidebar from '../ConversationSidebar';
-import type { ConversationSummary } from '@/lib/types';
+import type { ThreadSummary } from '@/lib/types';
 
 function renderWith(ui: React.ReactNode) {
   return render(<ChakraProvider>{ui}</ChakraProvider>);
 }
 
-const conversations: ConversationSummary[] = [
+const threads: ThreadSummary[] = [
   {
     id: 1,
-    query: 'What laws govern the North?',
+    title: 'What laws govern the North?',
     jurisdiction: 'The North',
+    message_count: 2,
     created_at: '2026-03-10T10:00:00Z',
   },
   {
     id: 2,
-    query: 'Tell me about trial by combat',
+    title: 'Tell me about trial by combat',
     jurisdiction: null,
+    message_count: 4,
     created_at: '2026-03-09T08:00:00Z',
   },
 ];
@@ -28,7 +30,7 @@ describe('ConversationSidebar', () => {
   it('renders toggle and new conversation buttons', () => {
     renderWith(
       <ConversationSidebar
-        conversations={conversations}
+        threads={threads}
         activeId={null}
         onSelect={() => {}}
         onDelete={() => {}}
@@ -43,11 +45,11 @@ describe('ConversationSidebar', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows conversations when expanded', async () => {
+  it('shows threads when expanded', async () => {
     const user = userEvent.setup();
     renderWith(
       <ConversationSidebar
-        conversations={conversations}
+        threads={threads}
         activeId={null}
         onSelect={() => {}}
         onDelete={() => {}}
@@ -63,12 +65,12 @@ describe('ConversationSidebar', () => {
     ).toBeInTheDocument();
   });
 
-  it('calls onSelect when conversation is clicked', async () => {
+  it('calls onSelect when thread is clicked', async () => {
     const user = userEvent.setup();
     const onSelect = vi.fn();
     renderWith(
       <ConversationSidebar
-        conversations={conversations}
+        threads={threads}
         activeId={null}
         onSelect={onSelect}
         onDelete={() => {}}
@@ -87,7 +89,7 @@ describe('ConversationSidebar', () => {
     const onDelete = vi.fn();
     renderWith(
       <ConversationSidebar
-        conversations={conversations}
+        threads={threads}
         activeId={null}
         onSelect={() => {}}
         onDelete={onDelete}
@@ -97,12 +99,12 @@ describe('ConversationSidebar', () => {
 
     await user.click(screen.getByRole('button', { name: 'Toggle sidebar' }));
 
-    const convText = screen.getByText('What laws govern the North?');
-    const convItem = convText.closest('div[class]')!;
-    fireEvent.mouseEnter(convItem);
+    const threadText = screen.getByText('What laws govern the North?');
+    const threadItem = threadText.closest('div[class]')!;
+    fireEvent.mouseEnter(threadItem);
 
     const deleteBtn = screen.getAllByRole('button', {
-      name: 'Delete conversation',
+      name: 'Delete thread',
     })[0];
     fireEvent.click(deleteBtn);
 

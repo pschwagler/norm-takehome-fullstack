@@ -276,6 +276,7 @@ Jurisdiction hierarchy: Kingdom-wide laws always apply everywhere. Regional laws
 - Response `422`: Invalid/missing query
 - Response `503`: OpenAI API unreachable or Qdrant not initialized
 - Notes: If no relevant laws found, LLM should respond saying so rather than hallucinating. System prompt enforces this.
+- After streaming completes, citations are filtered for relevance via a secondary LLM call (`CITATION_FILTER_MODEL`, default `o4-mini`) before being sent to the frontend. Fail-open: if the filter fails, all citations pass through unchanged.
 
 ---
 
@@ -462,6 +463,7 @@ This prompt is the key guardrail against hallucination. The `CitationQueryEngine
 - **PDF parsing**: Use `pymupdf4llm` for clean markdown extraction, then regex to split on the numbering scheme (`\d+\.\d+\.?...`). The structure is consistent enough that regex is more reliable than LLM-based parsing.
 - **LLM/RAG approach**: llama-index 0.14.x (modular) with `CitationQueryEngine` (`from llama_index.core.query_engine import CitationQueryEngine`). Use `Settings` singleton (`from llama_index.core import Settings`) — `ServiceContext` was removed in 0.11. Modular packages: `llama-index-core`, `llama-index-llms-openai`, `llama-index-embeddings-openai`, `llama-index-vector-stores-qdrant`.
 - **Streaming**: FastAPI SSE (`from fastapi.sse import EventSourceResponse, ServerSentEvent`) piping OpenAI streaming responses to the frontend. Frontend consumes via `@microsoft/fetch-event-source` (supports POST with body, unlike native `EventSource`).
+- **Citation relevance filter**: After streaming completes, a second call to `CITATION_FILTER_MODEL` (default `o4-mini`) evaluates which retrieved citations are relevant to the generated response. Receives both the raw query and the full response for context — this handles threaded follow-ups without needing the condensed query. Only relevant citations are sent to the frontend and persisted. Fail-open: if the filter call fails, all citations pass through unchanged. Cost: ~700 input tokens + ~50 output tokens per query (negligible). New env var: `CITATION_FILTER_MODEL`.
 
 ### AI & RAG Strategy
 
@@ -823,6 +825,22 @@ Note: Qdrant + LLM tests require `OPENAI_API_KEY`. Mark with `@pytest.mark.integ
 | `test_delete_conversation` | DELETE /conversations/1 returns 204, conversation gone |
 | `test_delete_conversation_not_found` | DELETE /conversations/999 returns 404 |
 | `test_query_saves_conversation` | POST /query → GET /conversations shows new entry |
+| `test_query_calls_citation_filter` | POST /query calls filter_relevant_citations with query, response, citations |
+| `test_query_filter_failure_still_streams` | Citation filter raises → SSE stream still completes with all citations |
+
+**Citation Filter (`test_citation_filter.py`)**
+| Test | Validates |
+|---|---|
+| `test_empty_citations_returns_empty` | `[]` input → `[]` output, no API call |
+| `test_filters_to_relevant_subset` | Model returns `["1.1"]` from `["1.1","2.3"]` → only `Citation(source="1.1")` |
+| `test_all_relevant_returns_all` | Model returns all section IDs → full list |
+| `test_none_relevant_returns_empty` | Model returns `[]` → empty list |
+| `test_fallback_on_api_error` | `chat.completions.create` raises → returns all, logs warning |
+| `test_fallback_on_json_parse_error` | Model returns `"not json"` → returns all, logs warning |
+| `test_fallback_on_wrong_json_shape` | Model returns `{"x":1}` → returns all |
+| `test_ignores_unknown_sections` | Model returns `["1.1","99.99"]` → only `1.1` kept |
+| `test_model_name_from_env` | `CITATION_FILTER_MODEL` env var controls model param |
+| `test_text_truncation_in_prompt` | Citation with >400 char text is truncated in the prompt |
 
 #### Frontend Unit Tests (`vitest` + React Testing Library)
 

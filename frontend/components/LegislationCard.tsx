@@ -3,10 +3,10 @@
 import { Flex, IconButton, Text } from '@chakra-ui/react';
 import { useState } from 'react';
 import { MdDelete } from 'react-icons/md';
-import type { DocumentResponse } from '@/lib/types';
+import type { LegislationResponse } from '@/lib/types';
 
-interface DocumentCardProps {
-  document: DocumentResponse;
+interface LegislationCardProps {
+  legislation: LegislationResponse;
   isSelected: boolean;
   onSelect: (id: number) => void;
   onDelete: (id: number) => void;
@@ -17,12 +17,12 @@ function formatDate(iso: string): string {
   return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
-export default function DocumentCard({
-  document,
+export default function LegislationCard({
+  legislation,
   isSelected,
   onSelect,
   onDelete,
-}: DocumentCardProps): React.ReactNode {
+}: LegislationCardProps): React.ReactNode {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
@@ -37,7 +37,7 @@ export default function DocumentCard({
       _hover={{ borderColor: '#2800D7' }}
       align="center"
       justify="space-between"
-      onClick={() => onSelect(document.id)}
+      onClick={() => onSelect(legislation.id)}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       transition="all 0.15s"
@@ -49,18 +49,18 @@ export default function DocumentCard({
           color={isSelected ? '#2800D7' : '#32343C'}
           noOfLines={1}
         >
-          {document.name}
+          {legislation.name}
         </Text>
         <Text fontSize="xs" color="#5E6272" whiteSpace="nowrap">
-          {document.laws_count} laws
+          {legislation.laws_count} laws
         </Text>
         <Text fontSize="xs" color="#5E6272" whiteSpace="nowrap">
-          {formatDate(document.uploaded_at)}
+          {formatDate(legislation.uploaded_at)}
         </Text>
       </Flex>
       {isHovered && (
         <IconButton
-          aria-label="Delete document"
+          aria-label="Delete legislation"
           icon={<MdDelete />}
           variant="ghost"
           size="sm"
@@ -68,7 +68,7 @@ export default function DocumentCard({
           _hover={{ color: 'red.500' }}
           onClick={(e) => {
             e.stopPropagation();
-            onDelete(document.id);
+            onDelete(legislation.id);
           }}
         />
       )}

@@ -40,3 +40,16 @@ bower_components/
 
 # claude queries for thought process
 docs/claude-queries.md
+
+# Test / coverage artifacts
+.coverage
+coverage/
+frontend/coverage/
+test-results/
+*.tsbuildinfo
+
+# Runtime data
+data/
+
+# MCP config
+.mcp.json

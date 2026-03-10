@@ -5,32 +5,34 @@ import { useCallback, useEffect, useState } from 'react';
 import HeaderNav from '@/components/HeaderNav';
 import UploadDropZone from '@/components/UploadDropZone';
 import UploadModal from '@/components/UploadModal';
-import DocumentList from '@/components/DocumentList';
+import LegislationList from '@/components/LegislationList';
 import LegislationBrowser from '@/components/LegislationBrowser';
 import {
-  deleteDocument,
-  fetchDocuments,
-  uploadDocument,
+  deleteLegislation,
+  fetchLegislation,
+  uploadLegislation,
 } from '@/lib/api';
-import type { DocumentResponse } from '@/lib/types';
+import type { LegislationResponse } from '@/lib/types';
 
-export default function DocumentsPage(): React.ReactNode {
-  const [documents, setDocuments] = useState<DocumentResponse[]>([]);
+export default function LegislationPage(): React.ReactNode {
+  const [legislationList, setLegislationList] = useState<LegislationResponse[]>(
+    []
+  );
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
 
-  const loadDocuments = useCallback(() => {
-    fetchDocuments()
-      .then(setDocuments)
+  const loadLegislation = useCallback(() => {
+    fetchLegislation()
+      .then(setLegislationList)
       .catch(() => {});
   }, []);
 
   useEffect(() => {
-    loadDocuments();
-  }, [loadDocuments]);
+    loadLegislation();
+  }, [loadLegislation]);
 
   function handleFileSelect(file: File) {
     setPendingFile(file);
@@ -41,13 +43,13 @@ export default function DocumentsPage(): React.ReactNode {
     if (!pendingFile) return;
     setIsUploading(true);
 
-    uploadDocument(pendingFile, name, jurisdiction)
+    uploadLegislation(pendingFile, name, jurisdiction)
       .then(() => {
         onClose();
         setPendingFile(null);
-        loadDocuments();
+        loadLegislation();
         toast({
-          title: 'Document uploaded',
+          title: 'Legislation uploaded',
           status: 'success',
           duration: 3000,
           isClosable: true,
@@ -66,9 +68,9 @@ export default function DocumentsPage(): React.ReactNode {
   }
 
   function handleDelete(id: number) {
-    deleteDocument(id)
+    deleteLegislation(id)
       .then(() => {
-        setDocuments((prev) => prev.filter((d) => d.id !== id));
+        setLegislationList((prev) => prev.filter((l) => l.id !== id));
         if (selectedId === id) setSelectedId(null);
       })
       .catch((err: Error) => {
@@ -105,15 +107,15 @@ export default function DocumentsPage(): React.ReactNode {
           <Box mb={4}>
             <UploadDropZone onFileSelect={handleFileSelect} />
           </Box>
-          <DocumentList
-            documents={documents}
+          <LegislationList
+            legislationList={legislationList}
             selectedId={selectedId}
             onSelect={setSelectedId}
             onDelete={handleDelete}
           />
         </Box>
         <Box flex={1} overflow="auto" bg="white" p={6}>
-          <LegislationBrowser documentId={selectedId} />
+          <LegislationBrowser legislationId={selectedId} />
         </Box>
       </Flex>
       <UploadModal

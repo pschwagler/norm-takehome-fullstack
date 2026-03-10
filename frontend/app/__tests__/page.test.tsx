@@ -6,13 +6,13 @@ import type { StreamCallbacks } from '@/lib/api';
 import Page from '../page';
 
 vi.mock('@/lib/api', () => ({
-  fetchConversations: vi.fn(),
-  fetchConversation: vi.fn(),
-  deleteConversation: vi.fn(),
+  fetchThreads: vi.fn(),
+  fetchThread: vi.fn(),
+  deleteThread: vi.fn(),
   streamQuery: vi.fn(),
 }));
 
-import { fetchConversations, fetchConversation, streamQuery } from '@/lib/api';
+import { fetchThreads, fetchThread, streamQuery } from '@/lib/api';
 
 function renderWith(ui: React.ReactNode) {
   return render(<ChakraProvider>{ui}</ChakraProvider>);
@@ -21,7 +21,7 @@ function renderWith(ui: React.ReactNode) {
 describe('Query Page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (fetchConversations as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (fetchThreads as ReturnType<typeof vi.fn>).mockResolvedValue([]);
   });
 
   it('renders welcome state with heading and input', async () => {
@@ -32,23 +32,22 @@ describe('Query Page', () => {
     ).toBeInTheDocument();
   });
 
-  it('loads conversations on mount', async () => {
-    const mockConversations = [
+  it('loads threads on mount', async () => {
+    const mockThreads = [
       {
         id: 1,
-        query: 'What about peace?',
+        title: 'What about peace?',
         jurisdiction: null,
+        message_count: 2,
         created_at: '2025-01-01T00:00:00',
       },
     ];
-    (fetchConversations as ReturnType<typeof vi.fn>).mockResolvedValue(
-      mockConversations
-    );
+    (fetchThreads as ReturnType<typeof vi.fn>).mockResolvedValue(mockThreads);
 
     renderWith(<Page />);
 
     await waitFor(() => {
-      expect(fetchConversations).toHaveBeenCalledOnce();
+      expect(fetchThreads).toHaveBeenCalledOnce();
     });
   });
 
@@ -70,7 +69,9 @@ describe('Query Page', () => {
         onCitations: expect.any(Function),
         onDone: expect.any(Function),
         onError: expect.any(Function),
-      })
+      }),
+      undefined,
+      undefined
     );
   });
 
@@ -78,7 +79,12 @@ describe('Query Page', () => {
     const user = userEvent.setup();
     let capturedCallbacks: StreamCallbacks | null = null;
     (streamQuery as ReturnType<typeof vi.fn>).mockImplementation(
-      (_query: string, callbacks: StreamCallbacks) => {
+      (
+        _query: string,
+        callbacks: StreamCallbacks,
+        _jurisdiction?: string,
+        _threadId?: number
+      ) => {
         capturedCallbacks = callbacks;
         return new AbortController();
       }
@@ -96,30 +102,42 @@ describe('Query Page', () => {
     });
 
     await waitFor(() => {
-      // Text appears in both QueryResponse error and toast
       const matches = screen.getAllByText('Something went wrong');
       expect(matches.length).toBeGreaterThanOrEqual(1);
     });
   });
 
-  it('fetches conversation detail when selecting from sidebar', async () => {
-    const mockConversations = [
+  it('fetches thread detail when selecting from sidebar', async () => {
+    const mockThreads = [
       {
         id: 1,
-        query: 'What about peace?',
+        title: 'What about peace?',
         jurisdiction: null,
+        message_count: 2,
         created_at: '2025-01-01T00:00:00',
       },
     ];
-    (fetchConversations as ReturnType<typeof vi.fn>).mockResolvedValue(
-      mockConversations
-    );
-    (fetchConversation as ReturnType<typeof vi.fn>).mockResolvedValue({
+    (fetchThreads as ReturnType<typeof vi.fn>).mockResolvedValue(mockThreads);
+    (fetchThread as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: 1,
-      query: 'What about peace?',
-      response: 'According to the law...',
-      citations: [],
+      title: 'What about peace?',
       jurisdiction: null,
+      messages: [
+        {
+          id: 1,
+          role: 'user',
+          content: 'What about peace?',
+          citations: [],
+          created_at: '2025-01-01T00:00:00',
+        },
+        {
+          id: 2,
+          role: 'assistant',
+          content: 'According to the law...',
+          citations: [],
+          created_at: '2025-01-01T00:00:01',
+        },
+      ],
       created_at: '2025-01-01T00:00:00',
     });
 
@@ -127,7 +145,7 @@ describe('Query Page', () => {
 
     // Expand sidebar first
     await waitFor(() => {
-      expect(fetchConversations).toHaveBeenCalled();
+      expect(fetchThreads).toHaveBeenCalled();
     });
 
     const toggleBtn = screen.getByRole('button', { name: 'Toggle sidebar' });
@@ -140,7 +158,7 @@ describe('Query Page', () => {
     await userEvent.click(screen.getByText('What about peace?'));
 
     await waitFor(() => {
-      expect(fetchConversation).toHaveBeenCalledWith(1);
+      expect(fetchThread).toHaveBeenCalledWith(1);
     });
   });
 });

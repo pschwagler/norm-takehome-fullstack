@@ -44,9 +44,7 @@ class QdrantService:
     def connect(self) -> None:
         """Initialize Qdrant (in-memory), embeddings, and LLM."""
         llm_model = os.environ.get("LLM_MODEL", "gpt-4.1")
-        embed_model = os.environ.get(
-            "EMBEDDING_MODEL", "text-embedding-3-large"
-        )
+        embed_model = os.environ.get("EMBEDDING_MODEL", "text-embedding-3-large")
 
         self._llm_model = llm_model
         Settings.llm = OpenAI(model=llm_model)
@@ -67,9 +65,7 @@ class QdrantService:
             extra={"llm_model": llm_model, "embed_model": embed_model},
         )
 
-    def load(
-        self, leaf_nodes: list[TextNode], all_nodes: list[TextNode]
-    ) -> None:
+    def load(self, leaf_nodes: list[TextNode], all_nodes: list[TextNode]) -> None:
         """Load nodes into docstore and vector index."""
         if self.storage_context is None:
             raise RuntimeError("Must call connect() before load()")
@@ -91,7 +87,9 @@ class QdrantService:
     def query(self, query_str: str, jurisdiction: str | None = None) -> Output:
         """Run a query against the legislation corpus."""
         if self.index is None or self.storage_context is None:
-            raise RuntimeError("Index not initialized. Call connect() and load() first.")
+            raise RuntimeError(
+                "Index not initialized. Call connect() and load() first."
+            )
 
         # Build retriever with optional jurisdiction filter
         retriever_kwargs: dict = {"similarity_top_k": self.k}
@@ -108,9 +106,7 @@ class QdrantService:
                     )
                 ]
             )
-            retriever_kwargs["vector_store_kwargs"] = {
-                "qdrant_filters": qdrant_filters
-            }
+            retriever_kwargs["vector_store_kwargs"] = {"qdrant_filters": qdrant_filters}
 
         base_retriever = self.index.as_retriever(**retriever_kwargs)
         retriever = AutoMergingRetriever(
@@ -130,7 +126,7 @@ class QdrantService:
 
         citations = _extract_citations(result.source_nodes)
         response_text = str(result)
-        if not response_text or response_text.strip() == "Empty Response":
+        if not response_text.strip() or response_text.strip() == "Empty Response":
             response_text = (
                 "I could not find relevant legislation addressing this question. "
                 "Please consult with a legal advisor or try refining your query."
@@ -143,10 +139,17 @@ class QdrantService:
         )
 
     async def aquery(
-        self, query_str: str, jurisdiction: str | None = None
+        self,
+        query_str: str,
+        jurisdiction: str | None = None,
+        chat_history: list[tuple[str, str]] | None = None,
     ):
         """Async streaming query. Yields (token, None) for text tokens
-        and (None, citations) when complete."""
+        and (None, citations) when complete.
+
+        chat_history: list of (user_message, assistant_message) pairs
+        for multi-turn context.
+        """
         if self.index is None or self.storage_context is None:
             raise RuntimeError("Index not initialized.")
 
@@ -164,9 +167,11 @@ class QdrantService:
                     )
                 ]
             )
-            retriever_kwargs["vector_store_kwargs"] = {
-                "qdrant_filters": qdrant_filters
-            }
+            retriever_kwargs["vector_store_kwargs"] = {"qdrant_filters": qdrant_filters}
+
+        condensed_query = await _condense_question(
+            self._llm_model, chat_history, query_str
+        )
 
         base_retriever = self.index.as_retriever(**retriever_kwargs)
         retriever = AutoMergingRetriever(
@@ -183,7 +188,7 @@ class QdrantService:
             llm=OpenAI(model=self._llm_model, system_prompt=SYSTEM_PROMPT),
         )
 
-        streaming_response = query_engine.query(query_str)
+        streaming_response = query_engine.query(condensed_query)
 
         # Stream tokens
         for token in streaming_response.response_gen:
@@ -193,8 +198,8 @@ class QdrantService:
         citations = _extract_citations(streaming_response.source_nodes)
         yield None, citations
 
-    def delete_document(self, document_id: int) -> None:
-        """Remove all nodes for a document from the index."""
+    def delete_legislation(self, legislation_id: int) -> None:
+        """Remove all nodes for a legislation entry from the index."""
         if self._client is None:
             return
 
@@ -205,8 +210,8 @@ class QdrantService:
             points_selector=Filter(
                 must=[
                     FieldCondition(
-                        key="document_id",
-                        match=MatchValue(value=document_id),
+                        key="legislation_id",
+                        match=MatchValue(value=legislation_id),
                     )
                 ]
             ),
@@ -217,15 +222,50 @@ class QdrantService:
             doc_ids_to_remove = [
                 doc_id
                 for doc_id, doc in self._docstore.docs.items()
-                if doc.metadata.get("document_id") == document_id
+                if doc.metadata.get("legislation_id") == legislation_id
             ]
             for doc_id in doc_ids_to_remove:
                 self._docstore.delete_document(doc_id)
 
         logger.info(
-            "Deleted document from index",
-            extra={"document_id": document_id},
+            "Deleted legislation from index",
+            extra={"legislation_id": legislation_id},
         )
+
+
+async def _condense_question(
+    llm_model: str,
+    chat_history: list[tuple[str, str]] | None,
+    question: str,
+) -> str:
+    """Rewrite a follow-up question into a standalone query using chat history.
+
+    Returns the question unchanged (no LLM call) when there is no history.
+    """
+    if not chat_history:
+        return question
+
+    history_lines = []
+    for user_msg, assistant_msg in chat_history:
+        history_lines.append(f"Human: {user_msg}")
+        history_lines.append(f"Assistant: {assistant_msg}")
+
+    history_block = "\n".join(history_lines)
+
+    prompt = (
+        "Given a conversation (between Human and Assistant) and a follow up message from Human, "
+        "rewrite the message to be a standalone question that captures all relevant context "
+        "from the conversation.\n\n"
+        "<Chat History>\n"
+        f"{history_block}\n"
+        "</Chat History>\n\n"
+        f"<Follow Up Message>\n{question}\n</Follow Up Message>\n\n"
+        "<Standalone question>\n"
+    )
+
+    llm = OpenAI(model=llm_model)
+    response = await llm.acomplete(prompt)
+    return response.text
 
 
 def _extract_citations(source_nodes) -> list[Citation]:
@@ -242,7 +282,7 @@ def _extract_citations(source_nodes) -> list[Citation]:
             Citation(
                 source=section,
                 text=node.node.get_content(),
-                document_name=meta.get("document_name"),
+                legislation_name=meta.get("legislation_name"),
                 jurisdiction=meta.get("jurisdiction"),
             )
         )

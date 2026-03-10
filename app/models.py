@@ -28,8 +28,8 @@ class Jurisdiction(str, Enum):
 # --- SQLModel table models ---
 
 
-class LegislationDocument(SQLModel, table=True):
-    __tablename__ = "legislation_documents"
+class Legislation(SQLModel, table=True):
+    __tablename__ = "legislation"
 
     id: Optional[int] = SQLField(default=None, primary_key=True)
     name: str
@@ -39,14 +39,14 @@ class LegislationDocument(SQLModel, table=True):
     uploaded_at: Optional[datetime] = SQLField(default_factory=datetime.utcnow)
     uploaded_by: Optional[str] = None
 
-    laws: list["Law"] = Relationship(back_populates="document")
+    laws: list["Law"] = Relationship(back_populates="legislation")
 
 
 class Law(SQLModel, table=True):
     __tablename__ = "laws"
 
     id: Optional[int] = SQLField(default=None, primary_key=True)
-    document_id: int = SQLField(foreign_key="legislation_documents.id")
+    legislation_id: int = SQLField(foreign_key="legislation.id")
     section: str
     topic: str
     section_title: Optional[str] = None
@@ -54,18 +54,34 @@ class Law(SQLModel, table=True):
     jurisdiction: str
     created_at: Optional[datetime] = SQLField(default_factory=datetime.utcnow)
 
-    document: Optional[LegislationDocument] = Relationship(back_populates="laws")
+    legislation: Optional[Legislation] = Relationship(back_populates="laws")
 
 
-class Conversation(SQLModel, table=True):
-    __tablename__ = "conversations"
+class Thread(SQLModel, table=True):
+    __tablename__ = "threads"
 
     id: Optional[int] = SQLField(default=None, primary_key=True)
-    query: str
-    response: str
-    citations: str  # JSON-serialized list
+    title: str
     jurisdiction: Optional[str] = None
     created_at: Optional[datetime] = SQLField(default_factory=datetime.utcnow)
+
+    messages: list["Message"] = Relationship(
+        back_populates="thread",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+    )
+
+
+class Message(SQLModel, table=True):
+    __tablename__ = "messages"
+
+    id: Optional[int] = SQLField(default=None, primary_key=True)
+    thread_id: int = SQLField(foreign_key="threads.id")
+    role: str  # "user" | "assistant"
+    content: str
+    citations: str = SQLField(default="[]")  # JSON-serialized list
+    created_at: Optional[datetime] = SQLField(default_factory=datetime.utcnow)
+
+    thread: Optional[Thread] = Relationship(back_populates="messages")
 
 
 # --- API schemas (Pydantic only, not SQLModel tables) ---
@@ -74,7 +90,7 @@ class Conversation(SQLModel, table=True):
 class Citation(BaseModel):
     source: str
     text: str
-    document_name: Optional[str] = None
+    legislation_name: Optional[str] = None
     jurisdiction: Optional[str] = None
 
 
@@ -87,11 +103,12 @@ class Output(BaseModel):
 class QueryRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=1000)
     jurisdiction: Optional[str] = None
+    thread_id: Optional[int] = None
 
 
 class HealthResponse(BaseModel):
     status: str
-    documents_loaded: int
+    legislation_loaded: int
     laws_indexed: int
 
 
@@ -102,7 +119,7 @@ class LawResponse(BaseModel):
     section_title: Optional[str]
     text: str
     jurisdiction: str
-    document_id: int
+    legislation_id: int
 
 
 class LawGroupResponse(BaseModel):
@@ -111,7 +128,7 @@ class LawGroupResponse(BaseModel):
     laws: list[LawResponse]
 
 
-class DocumentUploadResponse(BaseModel):
+class LegislationUploadResponse(BaseModel):
     id: int
     name: str
     file_name: str
@@ -119,7 +136,7 @@ class DocumentUploadResponse(BaseModel):
     uploaded_at: datetime
 
 
-class DocumentResponse(BaseModel):
+class LegislationResponse(BaseModel):
     id: int
     name: str
     file_name: str
@@ -129,17 +146,25 @@ class DocumentResponse(BaseModel):
     uploaded_by: Optional[str]
 
 
-class ConversationSummary(BaseModel):
+class MessageResponse(BaseModel):
     id: int
-    query: str
-    jurisdiction: Optional[str]
+    role: str
+    content: str
+    citations: list[Citation]
     created_at: datetime
 
 
-class ConversationResponse(BaseModel):
+class ThreadSummary(BaseModel):
     id: int
-    query: str
-    response: str
-    citations: list[Citation]
+    title: str
     jurisdiction: Optional[str]
+    message_count: int
+    created_at: datetime
+
+
+class ThreadDetail(BaseModel):
+    id: int
+    title: str
+    jurisdiction: Optional[str]
+    messages: list[MessageResponse]
     created_at: datetime
