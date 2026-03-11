@@ -7,6 +7,7 @@ from sqlmodel import Session, select
 from app.database import create_db_and_tables, engine
 from app.legislation_service import LegislationService
 from app.models import Law, Legislation
+from app.pdf_parser import ParsedLaw
 from app.qdrant_service import QdrantService
 
 logger = logging.getLogger(__name__)
@@ -102,9 +103,6 @@ def _reindex_all(qdrant_service: QdrantService) -> None:
 
             if not laws:
                 continue
-
-            # Reconstruct ParsedLaw objects from DB rows
-            from app.pdf_parser import ParsedLaw
 
             parsed_laws = [
                 ParsedLaw(

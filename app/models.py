@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Optional
 
@@ -36,7 +36,7 @@ class Legislation(SQLModel, table=True):
     file_name: str
     file_path: str
     jurisdiction: str = SQLField(default="Kingdom-wide")
-    uploaded_at: Optional[datetime] = SQLField(default_factory=datetime.utcnow)
+    uploaded_at: Optional[datetime] = SQLField(default_factory=lambda: datetime.now(UTC))
     uploaded_by: Optional[str] = None
 
     laws: list["Law"] = Relationship(back_populates="legislation")
@@ -52,7 +52,7 @@ class Law(SQLModel, table=True):
     section_title: Optional[str] = None
     text: str
     jurisdiction: str
-    created_at: Optional[datetime] = SQLField(default_factory=datetime.utcnow)
+    created_at: Optional[datetime] = SQLField(default_factory=lambda: datetime.now(UTC))
 
     legislation: Optional[Legislation] = Relationship(back_populates="laws")
 
@@ -63,7 +63,7 @@ class Thread(SQLModel, table=True):
     id: Optional[int] = SQLField(default=None, primary_key=True)
     title: str
     jurisdiction: Optional[str] = None
-    created_at: Optional[datetime] = SQLField(default_factory=datetime.utcnow)
+    created_at: Optional[datetime] = SQLField(default_factory=lambda: datetime.now(UTC))
 
     messages: list["Message"] = Relationship(
         back_populates="thread",
@@ -79,7 +79,7 @@ class Message(SQLModel, table=True):
     role: str  # "user" | "assistant"
     content: str
     citations: str = SQLField(default="[]")  # JSON-serialized list
-    created_at: Optional[datetime] = SQLField(default_factory=datetime.utcnow)
+    created_at: Optional[datetime] = SQLField(default_factory=lambda: datetime.now(UTC))
 
     thread: Optional[Thread] = Relationship(back_populates="messages")
 
@@ -90,6 +90,7 @@ class Message(SQLModel, table=True):
 class Citation(BaseModel):
     source: str
     text: str
+    legislation_id: Optional[int] = None
     legislation_name: Optional[str] = None
     jurisdiction: Optional[str] = None
 
@@ -98,6 +99,7 @@ class Output(BaseModel):
     query: str
     response: str
     citations: list[Citation]
+    thread_id: Optional[int] = None
 
 
 class QueryRequest(BaseModel):
@@ -124,7 +126,6 @@ class LawResponse(BaseModel):
 
 class LawGroupResponse(BaseModel):
     topic: str
-    section_title: Optional[str] = None
     laws: list[LawResponse]
 
 

@@ -10,6 +10,7 @@ def create_thread(
     first_query: str,
     jurisdiction: str | None = None,
 ) -> Thread:
+    """Create a new conversation thread, using the query as the title."""
     title = first_query[:80] if len(first_query) > 80 else first_query
     thread = Thread(title=title, jurisdiction=jurisdiction)
     session.add(thread)
@@ -25,6 +26,7 @@ def add_message(
     content: str,
     citations: list[Citation] | None = None,
 ) -> Message:
+    """Append a user or assistant message to a thread."""
     citations_json = json.dumps(
         [c.model_dump() for c in citations] if citations else []
     )
@@ -41,15 +43,18 @@ def add_message(
 
 
 def list_threads(session: Session, limit: int = 50) -> list[Thread]:
+    """Return the most recent threads, newest first."""
     statement = select(Thread).order_by(Thread.created_at.desc()).limit(limit)
     return list(session.exec(statement).all())
 
 
 def get_thread(session: Session, thread_id: int) -> Thread | None:
+    """Fetch a single thread by ID, or None if not found."""
     return session.get(Thread, thread_id)
 
 
 def delete_thread(session: Session, thread_id: int) -> bool:
+    """Delete a thread and its messages. Returns False if not found."""
     thread = session.get(Thread, thread_id)
     if thread is None:
         return False
@@ -82,5 +87,20 @@ def get_thread_history(
 
 
 def get_thread_message_count(session: Session, thread_id: int) -> int:
+    """Return the total number of messages in a thread."""
     statement = select(func.count(Message.id)).where(Message.thread_id == thread_id)
     return session.exec(statement).one()
+
+
+def get_message_counts(session: Session, thread_ids: list[int]) -> dict[int, int]:
+    """Batch-fetch message counts for multiple threads in a single query."""
+    if not thread_ids:
+        return {}
+    statement = (
+        select(Message.thread_id, func.count(Message.id))
+        .where(Message.thread_id.in_(thread_ids))
+        .group_by(Message.thread_id)
+    )
+    rows = session.exec(statement).all()
+    counts = {tid: cnt for tid, cnt in rows}
+    return {tid: counts.get(tid, 0) for tid in thread_ids}

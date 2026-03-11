@@ -1,71 +1,67 @@
-import json
-import logging
-import os
-
-from openai import AsyncOpenAI
+import re
 
 from app.models import Citation
 
-logger = logging.getLogger(__name__)
-
-_MAX_TEXT_LEN = 400
-
-_SYSTEM_PROMPT = (
-    "You are a citation relevance evaluator. Given a legal question, "
-    "the response generated, and the retrieved law citations, return a "
-    "JSON array of section identifiers for citations that are relevant "
-    "to the response. Return ONLY valid JSON -- no prose, no markdown fences."
-)
+_REF_RE = re.compile(r"\[(\d+)\]")
+_SOURCE_PREFIX_RE = re.compile(r"^Source \d+:\s*")
 
 
-def _build_user_message(query: str, response: str, citations: list[Citation]) -> str:
-    citation_lines = []
-    for c in citations:
-        text = c.text
-        if len(text) > _MAX_TEXT_LEN:
-            text = text[:_MAX_TEXT_LEN] + "..."
-        citation_lines.append(f"- [{c.source}]: {text}")
-
-    return f"Question: {query}\n\nResponse: {response}\n\nCitations:\n" + "\n".join(
-        citation_lines
-    )
-
-
-async def filter_relevant_citations(
-    query: str,
+def filter_by_response_refs(
     response: str,
-    citations: list[Citation],
-) -> list[Citation]:
-    if not citations:
-        return []
+    source_nodes: list,
+) -> tuple[str, list[Citation]]:
+    """Keep only citations referenced as [N] in the response and renumber
+    markers to be contiguous starting at [1].
 
-    try:
-        model = os.environ.get("CITATION_FILTER_MODEL", "o4-mini")
-        client = AsyncOpenAI()
+    The main LLM decides which sources to cite via [N] markers in its
+    response. This function extracts those references, builds a
+    deduplicated citation list (keyed on legislation_id + section), and
+    rewrites the markers so they are contiguous (e.g. [1], [3] becomes
+    [1], [2]).
 
-        result = await client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": _SYSTEM_PROMPT},
-                {
-                    "role": "user",
-                    "content": _build_user_message(query, response, citations),
-                },
-            ],
-            max_completion_tokens=256,
-        )
+    Returns (corrected_response, citations).
+    """
+    if not source_nodes:
+        return response, []
 
-        raw = result.choices[0].message.content
-        parsed = json.loads(raw)
+    refs = sorted({int(m) for m in _REF_RE.findall(response)})
+    if not refs:
+        return response, []
 
-        if not isinstance(parsed, list):
-            raise ValueError(f"Expected JSON array, got {type(parsed).__name__}")
+    citations: list[Citation] = []
+    key_to_new: dict[tuple[int | None, str], int] = {}
+    old_to_new: dict[int, int] = {}
 
-        valid_sources = {c.source for c in citations}
-        relevant_set = {s for s in parsed if s in valid_sources}
+    for ref in refs:
+        idx = ref - 1
+        if idx < 0 or idx >= len(source_nodes):
+            continue
 
-        return [c for c in citations if c.source in relevant_set]
+        node = source_nodes[idx]
+        meta = node.node.metadata
+        section = meta.get("section", "Unknown")
+        leg_id = meta.get("legislation_id")
+        key = (leg_id, section)
 
-    except Exception:
-        logger.warning("Citation filter failed, returning all citations")
-        return list(citations)
+        if key not in key_to_new:
+            text = _SOURCE_PREFIX_RE.sub("", node.node.get_content())
+            citations.append(
+                Citation(
+                    source=section,
+                    text=text,
+                    legislation_id=leg_id,
+                    legislation_name=meta.get("legislation_name"),
+                    jurisdiction=meta.get("jurisdiction"),
+                )
+            )
+            key_to_new[key] = len(citations)  # 1-based
+
+        old_to_new[ref] = key_to_new[key]
+
+    def _replace_ref(match: re.Match) -> str:
+        old_num = int(match.group(1))
+        new_num = old_to_new.get(old_num)
+        return f"[{new_num}]" if new_num is not None else ""
+
+    corrected = _REF_RE.sub(_replace_ref, response)
+    return corrected, citations
