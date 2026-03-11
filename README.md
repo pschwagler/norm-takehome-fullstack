@@ -54,15 +54,32 @@ npm run dev:frontend   # frontend only (Next.js dev server)
 ## Testing
 
 ```sh
-npm test               # run backend and frontend tests sequentially
-npm run test:backend   # pytest
-npm run test:frontend  # vitest
+npm test               # run all tests (backend + frontend)
+npm run test:backend   # pytest (Python unit/integration tests)
+npm run test:frontend  # vitest (React component + unit tests)
+npx playwright test    # Playwright E2E tests (requires running app)
+```
+
+### Coverage
+
+```sh
+# backend -- pytest with coverage report
+pytest tests/ --cov=app --cov-report=term-missing
+
+# frontend -- vitest with v8 coverage
+npm run test:run --prefix frontend -- --coverage
 ```
 
 ## Linting & Formatting
 
 ```sh
 npm run lint           # ESLint (frontend)
-npm run format         # Prettier write (frontend)
+npm run format         # Prettier auto-fix (frontend)
 npm run format:check   # Prettier check (frontend)
+```
+
+### Run all checks
+
+```sh
+npm run format:check && npm run lint && npm test
 ```
