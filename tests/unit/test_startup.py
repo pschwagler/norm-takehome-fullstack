@@ -1,6 +1,6 @@
 """Tests for app/startup.py -- startup(), _seed_initial_legislation(), _reindex_all()."""
 import os
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy.pool import StaticPool
@@ -52,8 +52,6 @@ def test_startup_creates_directories(tmp_path, mem_engine):
     ):
         startup(mock_qdrant)
 
-    data_call = call("data", exist_ok=True)
-    upload_call = call(upload_dir, exist_ok=True)
     mock_makedirs.assert_any_call("data", exist_ok=True)
     mock_makedirs.assert_any_call(upload_dir, exist_ok=True)
 

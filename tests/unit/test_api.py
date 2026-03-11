@@ -81,20 +81,21 @@ def client(test_engine, mock_qdrant):
 
     fastapi_app.dependency_overrides[get_session] = override_session
 
-    original_qdrant = app_module.qdrant_service
-    app_module.qdrant_service = mock_qdrant
+    import app.routes.query as query_mod
+    import app.routes.legislation as legislation_mod
+
+    original_query_service = query_mod._query_service
+    original_leg_qdrant = legislation_mod.qdrant_service
+    query_mod._query_service = mock_qdrant
+    legislation_mod.qdrant_service = mock_qdrant
 
     with patch("app.main.startup"):
         with patch("app.database.engine", test_engine):
-            with patch(
-                "app.main.filter_relevant_citations",
-                new_callable=AsyncMock,
-                side_effect=lambda q, r, c: c,
-            ):
-                with TestClient(fastapi_app, raise_server_exceptions=False) as c:
-                    yield c
+            with TestClient(fastapi_app, raise_server_exceptions=False) as c:
+                yield c
 
-    app_module.qdrant_service = original_qdrant
+    query_mod._query_service = original_query_service
+    legislation_mod.qdrant_service = original_leg_qdrant
     fastapi_app.dependency_overrides.clear()
 
 
@@ -316,8 +317,8 @@ def test_upload_legislation_valid_pdf(client, mock_qdrant, tmp_path):
     ]
 
     with (
-        patch("app.main.legislation_service") as mock_legislation_svc,
-        patch("app.main.UPLOAD_DIR", str(tmp_path)),
+        patch("app.routes.legislation.legislation_service", mock_legislation_svc := MagicMock()),
+        patch("app.routes.legislation.UPLOAD_DIR", str(tmp_path)),
     ):
         mock_legislation_svc.create_legislation.return_value = mock_parsed
         mock_legislation_svc.create_nodes.return_value = ([], [])
@@ -388,6 +389,7 @@ def test_delete_thread_not_found(client):
 
 def test_query_calls_citation_filter(test_engine, mock_qdrant):
     import app.main as app_module
+    import app.routes.query as query_mod
     from app.database import get_session
 
     fastapi_app = app_module.app
@@ -398,14 +400,14 @@ def test_query_calls_citation_filter(test_engine, mock_qdrant):
 
     fastapi_app.dependency_overrides[get_session] = override_session
 
-    original_qdrant = app_module.qdrant_service
-    app_module.qdrant_service = mock_qdrant
+    original_query_service = query_mod._query_service
+    query_mod._query_service = mock_qdrant
 
-    mock_filter = AsyncMock(side_effect=lambda q, r, c: c)
+    mock_filter = MagicMock(return_value=("Test response", []))
 
     with patch("app.main.startup"):
         with patch("app.database.engine", test_engine):
-            with patch("app.main.filter_relevant_citations", mock_filter):
+            with patch("app.query_service.filter_by_response_refs", mock_filter):
                 with TestClient(fastapi_app, raise_server_exceptions=False) as c:
                     c.post(
                         "/query",
@@ -414,17 +416,16 @@ def test_query_calls_citation_filter(test_engine, mock_qdrant):
 
     mock_filter.assert_called_once()
     args = mock_filter.call_args[0]
-    assert args[0] == "What are the trade laws?"
-    assert "Test response" in args[1]
-    assert len(args[2]) == 1
-    assert args[2][0].source == "1.1"
+    assert args[0] == "Test response"
+    assert isinstance(args[1], list)
 
-    app_module.qdrant_service = original_qdrant
+    query_mod._query_service = original_query_service
     fastapi_app.dependency_overrides.clear()
 
 
 def test_query_filter_failure_still_streams(test_engine, mock_qdrant):
     import app.main as app_module
+    import app.routes.query as query_mod
     from app.database import get_session
 
     fastapi_app = app_module.app
@@ -435,14 +436,14 @@ def test_query_filter_failure_still_streams(test_engine, mock_qdrant):
 
     fastapi_app.dependency_overrides[get_session] = override_session
 
-    original_qdrant = app_module.qdrant_service
-    app_module.qdrant_service = mock_qdrant
+    original_query_service = query_mod._query_service
+    query_mod._query_service = mock_qdrant
 
-    mock_filter = AsyncMock(side_effect=RuntimeError("filter exploded"))
+    mock_filter = MagicMock(side_effect=RuntimeError("filter exploded"))
 
     with patch("app.main.startup"):
         with patch("app.database.engine", test_engine):
-            with patch("app.main.filter_relevant_citations", mock_filter):
+            with patch("app.query_service.filter_by_response_refs", mock_filter):
                 with TestClient(fastapi_app, raise_server_exceptions=False) as c:
                     response = c.post(
                         "/query",
@@ -455,5 +456,5 @@ def test_query_filter_failure_still_streams(test_engine, mock_qdrant):
     text = response.text
     assert "event: error" in text or "event: done" in text
 
-    app_module.qdrant_service = original_qdrant
+    query_mod._query_service = original_query_service
     fastapi_app.dependency_overrides.clear()
