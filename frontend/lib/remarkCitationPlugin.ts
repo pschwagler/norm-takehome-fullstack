@@ -15,7 +15,8 @@ const remarkCitationPlugin: Plugin<[], Root> = () => {
       if (!parent || index === undefined) return;
 
       // Skip citations inside code blocks
-      if (parent.type === 'code' || parent.type === 'inlineCode') {
+      const parentType = parent.type as string;
+      if (parentType === 'code' || parentType === 'inlineCode') {
         return SKIP;
       }
 

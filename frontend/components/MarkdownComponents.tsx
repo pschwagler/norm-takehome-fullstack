@@ -10,12 +10,7 @@ import {
 } from '@chakra-ui/react';
 import { createContext, useContext } from 'react';
 import type { Components } from 'react-markdown';
-import {
-  BRAND_PURPLE,
-  HOVER_PURPLE,
-  BORDER,
-  TEXT_PRIMARY,
-} from '@/lib/colors';
+import { BRAND_PURPLE, HOVER_PURPLE, BORDER, TEXT_PRIMARY } from '@/lib/colors';
 
 interface CitationContextValue {
   localToGlobal: (localCitationIndex: number) => number;
@@ -48,7 +43,7 @@ function CitationBadge({ localRef }: { localRef: number }): React.ReactNode {
   );
 }
 
-export const MARKDOWN_COMPONENTS: Components = {
+export const MARKDOWN_COMPONENTS: Components & Record<string, unknown> = {
   p: ({ children }) => (
     <Text lineHeight="1.7" mb={2} color={TEXT_PRIMARY}>
       {children}
@@ -142,12 +137,7 @@ export const MARKDOWN_COMPONENTS: Components = {
   ),
 
   // Custom element produced by remarkCitationPlugin
-  'citation-ref': (({
-    localRef,
-  }: {
-    localRef: number;
-  }) => {
+  'citation-ref': (({ localRef }: { localRef: number }) => {
     return <CitationBadge localRef={localRef} />;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   }) as any,
 };
