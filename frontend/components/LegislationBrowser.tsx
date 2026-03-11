@@ -1,10 +1,12 @@
 'use client';
 
-import { Box, Spinner, Text, VStack } from '@chakra-ui/react';
-import { useEffect, useState } from 'react';
+import { Box, Flex, Spinner, Text, VStack } from '@chakra-ui/react';
+import { useEffect, useRef, useState } from 'react';
 import TopicAccordion from './TopicAccordion';
+import LegislationTOC from './LegislationTOC';
 import { fetchLaws } from '@/lib/api';
 import type { LawGroup } from '@/lib/types';
+import { BRAND_PURPLE, NEUTRAL_GRAY } from '@/lib/colors';
 
 interface LegislationBrowserProps {
   legislationId: number | null;
@@ -14,6 +16,7 @@ export default function LegislationBrowser({
   legislationId,
 }: LegislationBrowserProps): React.ReactNode {
   const [groups, setGroups] = useState<LawGroup[]>([]);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,8 +39,8 @@ export default function LegislationBrowser({
   if (isLoading) {
     return (
       <VStack py={8}>
-        <Spinner color="#2800D7" />
-        <Text fontSize="sm" color="#5E6272">
+        <Spinner color={BRAND_PURPLE} />
+        <Text fontSize="sm" color={NEUTRAL_GRAY}>
           Loading laws...
         </Text>
       </VStack>
@@ -55,8 +58,16 @@ export default function LegislationBrowser({
   }
 
   return (
-    <VStack align="stretch" spacing={0}>
-      <TopicAccordion groups={groups} />
-    </VStack>
+    <Flex h="100%">
+      {groups.length > 0 && (
+        <LegislationTOC
+          groups={groups}
+          scrollContainerRef={scrollContainerRef}
+        />
+      )}
+      <Box ref={scrollContainerRef} flex={1} overflowY="auto" p={6}>
+        <TopicAccordion groups={groups} />
+      </Box>
+    </Flex>
   );
 }

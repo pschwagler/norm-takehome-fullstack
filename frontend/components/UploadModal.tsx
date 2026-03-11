@@ -17,6 +17,7 @@ import {
 } from '@chakra-ui/react';
 import { useState } from 'react';
 import { JURISDICTIONS } from '@/lib/types';
+import { BRAND_PURPLE, NEUTRAL_GRAY, BORDER } from '@/lib/colors';
 
 interface UploadModalProps {
   isOpen: boolean;
@@ -49,7 +50,7 @@ export default function UploadModal({
         <ModalCloseButton />
         <ModalBody>
           {file && (
-            <Text fontSize="sm" color="#5E6272" mb={4}>
+            <Text fontSize="sm" color={NEUTRAL_GRAY} mb={4}>
               File: {file.name}
             </Text>
           )}
@@ -59,10 +60,10 @@ export default function UploadModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Northern Edicts"
-              borderColor="#DBDCE1"
+              borderColor={BORDER}
               _focus={{
-                borderColor: '#2800D7',
-                boxShadow: '0 0 0 1px #2800D7',
+                borderColor: BRAND_PURPLE,
+                boxShadow: `0 0 0 1px ${BRAND_PURPLE}`,
               }}
             />
           </FormControl>
@@ -71,10 +72,10 @@ export default function UploadModal({
             <Select
               value={jurisdiction}
               onChange={(e) => setJurisdiction(e.target.value)}
-              borderColor="#DBDCE1"
+              borderColor={BORDER}
               _focus={{
-                borderColor: '#2800D7',
-                boxShadow: '0 0 0 1px #2800D7',
+                borderColor: BRAND_PURPLE,
+                boxShadow: `0 0 0 1px ${BRAND_PURPLE}`,
               }}
             >
               {JURISDICTIONS.map((j) => (
@@ -90,7 +91,7 @@ export default function UploadModal({
             Cancel
           </Button>
           <Button
-            bg="#2800D7"
+            bg={BRAND_PURPLE}
             color="white"
             _hover={{ bg: '#1E00A3' }}
             onClick={handleSubmit}

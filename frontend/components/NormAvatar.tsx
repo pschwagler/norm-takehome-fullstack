@@ -1,4 +1,5 @@
 import { Box } from '@chakra-ui/react';
+import { BRAND_PURPLE } from '@/lib/colors';
 
 interface NormAvatarProps {
   size?: string;
@@ -23,7 +24,7 @@ export default function NormAvatar({
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
       >
-        <rect width="100" height="100" rx="23.875" fill="#2800D7" />
+        <rect width="100" height="100" rx="23.875" fill={BRAND_PURPLE} />
         <path
           fillRule="evenodd"
           clipRule="evenodd"

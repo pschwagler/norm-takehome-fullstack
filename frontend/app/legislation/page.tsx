@@ -13,6 +13,7 @@ import {
   uploadLegislation,
 } from '@/lib/api';
 import type { LegislationResponse } from '@/lib/types';
+import { BORDER, BG } from '@/lib/colors';
 
 export default function LegislationPage(): React.ReactNode {
   const [legislationList, setLegislationList] = useState<LegislationResponse[]>(
@@ -99,8 +100,8 @@ export default function LegislationPage(): React.ReactNode {
           w="340px"
           minW="340px"
           borderRight="1px"
-          borderColor="#DBDCE1"
-          bg="#FBFBFB"
+          borderColor={BORDER}
+          bg={BG}
           p={4}
           overflowY="auto"
         >
@@ -114,7 +115,7 @@ export default function LegislationPage(): React.ReactNode {
             onDelete={handleDelete}
           />
         </Box>
-        <Box flex={1} overflow="auto" bg="white" p={6}>
+        <Box flex={1} overflow="hidden" bg="white">
           <LegislationBrowser legislationId={selectedId} />
         </Box>
       </Flex>

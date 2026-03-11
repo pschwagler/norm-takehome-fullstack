@@ -1,8 +1,9 @@
 import { ChakraProvider } from '@chakra-ui/react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ConversationSidebar from '../ConversationSidebar';
+import { formatDate } from '@/lib/dates';
 import type { ThreadSummary } from '@/lib/types';
 
 function renderWith(ui: React.ReactNode) {
@@ -25,6 +26,43 @@ const threads: ThreadSummary[] = [
     created_at: '2026-03-09T08:00:00Z',
   },
 ];
+
+describe('formatDate', () => {
+  const NOW = new Date('2026-03-10T12:00:00Z').getTime();
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('returns "just now" for less than 60 seconds ago', () => {
+    expect(formatDate('2026-03-10T11:59:30Z')).toBe('just now');
+  });
+
+  it('returns minutes ago', () => {
+    expect(formatDate('2026-03-10T11:55:00Z')).toBe('5m ago');
+  });
+
+  it('returns hours ago', () => {
+    expect(formatDate('2026-03-10T09:00:00Z')).toBe('3h ago');
+  });
+
+  it('returns days ago', () => {
+    expect(formatDate('2026-03-07T12:00:00Z')).toBe('3d ago');
+  });
+
+  it('returns months ago', () => {
+    expect(formatDate('2025-12-10T12:00:00Z')).toBe('3mo ago');
+  });
+
+  it('returns years ago', () => {
+    expect(formatDate('2024-01-10T12:00:00Z')).toBe('2y ago');
+  });
+});
 
 describe('ConversationSidebar', () => {
   it('renders toggle and new conversation buttons', () => {

@@ -3,6 +3,7 @@
 import { Flex, IconButton, Input } from '@chakra-ui/react';
 import { useState } from 'react';
 import { MdSend } from 'react-icons/md';
+import { BRAND_PURPLE, BORDER } from '@/lib/colors';
 
 interface QueryInputProps {
   onSubmit: (query: string) => void;
@@ -39,9 +40,12 @@ export default function QueryInput({
         value={value}
         onChange={(e) => setValue(e.target.value)}
         bg="white"
-        borderColor="#DBDCE1"
-        _hover={{ borderColor: '#2800D7' }}
-        _focus={{ borderColor: '#2800D7', boxShadow: '0 0 0 1px #2800D7' }}
+        borderColor={BORDER}
+        _hover={{ borderColor: BRAND_PURPLE }}
+        _focus={{
+          borderColor: BRAND_PURPLE,
+          boxShadow: `0 0 0 1px ${BRAND_PURPLE}`,
+        }}
         size="lg"
         fontSize="md"
       />
@@ -51,10 +55,10 @@ export default function QueryInput({
         type="submit"
         isDisabled={!value.trim() || isLoading}
         isLoading={isLoading}
-        bg="#2800D7"
+        bg={BRAND_PURPLE}
         color="white"
         _hover={{ bg: '#1E00A3' }}
-        _disabled={{ bg: '#DBDCE1', cursor: 'not-allowed' }}
+        _disabled={{ bg: BORDER, cursor: 'not-allowed' }}
         size="lg"
       />
     </Flex>

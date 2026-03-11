@@ -1,14 +1,9 @@
 export interface Citation {
   source: string;
   text: string;
-  document_name?: string;
+  legislation_id?: number;
+  legislation_name?: string;
   jurisdiction?: string;
-}
-
-export interface QueryRequest {
-  query: string;
-  jurisdiction?: string;
-  thread_id?: number;
 }
 
 export interface Message {
@@ -42,6 +37,12 @@ export interface ActiveMessage {
   isStreaming: boolean;
 }
 
+export interface CumulativeCitation {
+  globalIndex: number;
+  citation: Citation;
+  messageIndex: number;
+}
+
 export interface LawResponse {
   id: number;
   section: string;
@@ -54,7 +55,6 @@ export interface LawResponse {
 
 export interface LawGroup {
   topic: string;
-  section_title: string | null;
   laws: LawResponse[];
 }
 
@@ -74,12 +74,6 @@ export interface LegislationUploadResponse {
   file_name: string;
   laws_count: number;
   uploaded_at: string;
-}
-
-export interface HealthResponse {
-  status: string;
-  legislation_loaded: number;
-  laws_indexed: number;
 }
 
 export const JURISDICTIONS = [

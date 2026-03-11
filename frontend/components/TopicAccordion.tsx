@@ -11,6 +11,7 @@ import {
 } from '@chakra-ui/react';
 import LawEntry from './LawEntry';
 import type { LawGroup } from '@/lib/types';
+import { NEUTRAL_GRAY, TEXT_PRIMARY } from '@/lib/colors';
 
 interface TopicAccordionProps {
   groups: LawGroup[];
@@ -21,14 +22,14 @@ export default function TopicAccordion({
 }: TopicAccordionProps): React.ReactNode {
   if (groups.length === 0) {
     return (
-      <Text fontSize="sm" color="#5E6272">
+      <Text fontSize="sm" color={NEUTRAL_GRAY}>
         No laws found.
       </Text>
     );
   }
 
   return (
-    <Accordion allowMultiple>
+    <Accordion allowMultiple defaultIndex={groups.map((_, i) => i)}>
       {groups.map((group) => {
         const topicNumber = group.laws[0]?.section.split('.')[0] ?? '';
 
@@ -45,42 +46,52 @@ export default function TopicAccordion({
         }
 
         return (
-          <AccordionItem key={group.topic} border="none">
-            <AccordionButton
-              px={2}
-              py={2}
-              _hover={{ bg: '#F5F5F5' }}
-              borderRadius="md"
-            >
-              <Box flex={1} textAlign="left">
-                <Text fontSize="sm" fontWeight="semibold" color="#32343C">
-                  {topicNumber}. {group.topic}
-                </Text>
-              </Box>
-              <AccordionIcon color="#5E6272" />
-            </AccordionButton>
-            <AccordionPanel pb={2} px={0}>
-              {subgroups.map((sub, idx) => (
-                <Box key={idx}>
-                  {sub.title && (
-                    <Text
-                      fontSize="sm"
-                      fontWeight="medium"
-                      color="#5E6272"
-                      pl={4}
-                      pt={1}
-                      pb={1}
-                    >
-                      {sub.title}
-                    </Text>
-                  )}
-                  {sub.laws.map((law) => (
-                    <LawEntry key={law.id} law={law} />
-                  ))}
+          <Box
+            key={group.topic}
+            id={`topic-${topicNumber}`}
+            sx={{ scrollMarginTop: '60px' }}
+          >
+            <AccordionItem border="none">
+              <AccordionButton
+                px={2}
+                py={1.5}
+                _hover={{ bg: '#F5F5F5' }}
+                borderRadius="md"
+              >
+                <Box flex={1} textAlign="left">
+                  <Text
+                    fontSize="sm"
+                    fontWeight="semibold"
+                    color={TEXT_PRIMARY}
+                  >
+                    {topicNumber}. {group.topic}
+                  </Text>
                 </Box>
-              ))}
-            </AccordionPanel>
-          </AccordionItem>
+                <AccordionIcon color={NEUTRAL_GRAY} />
+              </AccordionButton>
+              <AccordionPanel pb={2} pt={0} px={0}>
+                {subgroups.map((sub, idx) => (
+                  <Box key={idx}>
+                    {sub.title && (
+                      <Text
+                        fontSize="sm"
+                        fontWeight="medium"
+                        color={NEUTRAL_GRAY}
+                        pl={4}
+                        pt={0.5}
+                        pb={0.5}
+                      >
+                        {sub.title}
+                      </Text>
+                    )}
+                    {sub.laws.map((law) => (
+                      <LawEntry key={law.id} law={law} />
+                    ))}
+                  </Box>
+                ))}
+              </AccordionPanel>
+            </AccordionItem>
+          </Box>
         );
       })}
     </Accordion>

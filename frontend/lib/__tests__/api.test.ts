@@ -456,7 +456,7 @@ describe('streamQuery', () => {
       {
         source: 'law-1',
         text: 'No murder.',
-        document_name: 'Edicts',
+        legislation_name: 'Edicts',
         jurisdiction: 'Kingdom-wide',
       },
     ];
@@ -477,12 +477,12 @@ describe('streamQuery', () => {
 
     onmessage({
       event: 'done',
-      data: JSON.stringify({ thread_id: 7 }),
+      data: JSON.stringify({ thread_id: 7, response: 'corrected text' }),
       id: '',
       retry: undefined,
     });
 
-    expect(callbacks.onDone).toHaveBeenCalledWith(7);
+    expect(callbacks.onDone).toHaveBeenCalledWith(7, 'corrected text');
   });
 
   it('calls onError when an error event arrives with detail', () => {

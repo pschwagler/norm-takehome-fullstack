@@ -3,6 +3,7 @@
 import { Box, Text, VStack } from '@chakra-ui/react';
 import { useCallback, useRef, useState } from 'react';
 import { MdCloudUpload } from 'react-icons/md';
+import { BRAND_PURPLE, NEUTRAL_GRAY, BORDER, HOVER_PURPLE } from '@/lib/colors';
 
 interface UploadDropZoneProps {
   onFileSelect: (file: File) => void;
@@ -57,23 +58,26 @@ export default function UploadDropZone({
     <Box>
       <Box
         border="2px dashed"
-        borderColor={isDragging ? '#2800D7' : '#DBDCE1'}
+        borderColor={isDragging ? BRAND_PURPLE : BORDER}
         borderRadius="lg"
-        bg={isDragging ? '#EEEBFF' : 'white'}
+        bg={isDragging ? HOVER_PURPLE : 'white'}
         py={10}
         px={6}
         textAlign="center"
         cursor="pointer"
         transition="all 0.15s"
-        _hover={{ borderColor: '#2800D7', bg: '#FAFAFE' }}
+        _hover={{ borderColor: BRAND_PURPLE, bg: '#FAFAFE' }}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onClick={handleClick}
       >
         <VStack spacing={2}>
-          <MdCloudUpload size={40} color={isDragging ? '#2800D7' : '#5E6272'} />
-          <Text fontSize="sm" color="#5E6272">
+          <MdCloudUpload
+            size={40}
+            color={isDragging ? BRAND_PURPLE : NEUTRAL_GRAY}
+          />
+          <Text fontSize="sm" color={NEUTRAL_GRAY}>
             Drag and drop a PDF here, or click to browse
           </Text>
         </VStack>

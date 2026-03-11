@@ -47,11 +47,8 @@ describe('TopicAccordion', () => {
     expect(screen.getByText('1. Peace')).toBeInTheDocument();
   });
 
-  it('expands to show child laws on click', async () => {
-    const user = userEvent.setup();
+  it('shows child laws immediately without click (expanded by default)', () => {
     renderWith(<TopicAccordion groups={groups} />);
-
-    await user.click(screen.getByText('1. Peace'));
 
     expect(
       screen.getByText('All conflicts shall be resolved.')
@@ -59,5 +56,26 @@ describe('TopicAccordion', () => {
     expect(
       screen.getByText('No house shall wage private war.')
     ).toBeInTheDocument();
+
+    // Verify accordion button is in expanded state
+    const button = screen.getByText('1. Peace').closest('button');
+    expect(button).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('collapses topic on click', async () => {
+    const user = userEvent.setup();
+    renderWith(<TopicAccordion groups={groups} />);
+
+    const button = screen.getByText('1. Peace').closest('button');
+    expect(button).toHaveAttribute('aria-expanded', 'true');
+
+    await user.click(screen.getByText('1. Peace'));
+
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('assigns scroll target IDs to each topic', () => {
+    renderWith(<TopicAccordion groups={groups} />);
+    expect(document.getElementById('topic-1')).toBeInTheDocument();
   });
 });

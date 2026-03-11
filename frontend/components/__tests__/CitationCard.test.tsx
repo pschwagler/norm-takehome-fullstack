@@ -12,19 +12,26 @@ function renderWith(ui: React.ReactNode) {
 const citation: Citation = {
   source: '1.1',
   text: 'All conflicts between noble houses shall be resolved through the Crown.',
+  legislation_id: 1,
+  legislation_name: 'Laws of the Seven Kingdoms',
   jurisdiction: 'Kingdom-wide',
 };
 
 describe('CitationCard', () => {
   it('renders section number and index', () => {
-    renderWith(<CitationCard citation={citation} index={0} />);
+    renderWith(<CitationCard citation={citation} globalIndex={0} />);
     expect(screen.getByText(/\[1\]/)).toBeInTheDocument();
     expect(screen.getByText(/Section 1\.1/)).toBeInTheDocument();
   });
 
   it('shows jurisdiction', () => {
-    renderWith(<CitationCard citation={citation} index={0} />);
+    renderWith(<CitationCard citation={citation} globalIndex={0} />);
     expect(screen.getByText('Kingdom-wide')).toBeInTheDocument();
+  });
+
+  it('shows legislation name', () => {
+    renderWith(<CitationCard citation={citation} globalIndex={0} />);
+    expect(screen.getByText('Laws of the Seven Kingdoms')).toBeInTheDocument();
   });
 
   it('expands to show full text on click', async () => {
@@ -33,7 +40,7 @@ describe('CitationCard', () => {
       source: '2.1',
       text: 'A very long law text that should be truncated initially but shown in full when the card is expanded by clicking on it.',
     };
-    renderWith(<CitationCard citation={longCitation} index={1} />);
+    renderWith(<CitationCard citation={longCitation} globalIndex={1} />);
 
     const card =
       screen.getByText(/Section 2\.1/).closest('[role="button"]') ??

@@ -3,7 +3,16 @@
 import { Box, Flex, IconButton, Text, Tooltip, VStack } from '@chakra-ui/react';
 import { useState } from 'react';
 import { MdDelete, MdModeEdit } from 'react-icons/md';
+import { formatDate } from '@/lib/dates';
 import type { ThreadSummary } from '@/lib/types';
+import {
+  BORDER,
+  BG,
+  NEUTRAL_GRAY,
+  HOVER_PURPLE,
+  BRAND_PURPLE,
+  TEXT_PRIMARY,
+} from '@/lib/colors';
 
 interface ConversationSidebarProps {
   threads: ThreadSummary[];
@@ -11,11 +20,6 @@ interface ConversationSidebarProps {
   onSelect: (id: number) => void;
   onDelete: (id: number) => void;
   onNewConversation: () => void;
-}
-
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
 export default function ConversationSidebar({
@@ -32,8 +36,8 @@ export default function ConversationSidebar({
       width={isExpanded ? '260px' : '48px'}
       minWidth={isExpanded ? '260px' : '48px'}
       borderRight="1px"
-      borderColor="#DBDCE1"
-      bg="#FBFBFB"
+      borderColor={BORDER}
+      bg={BG}
       transition="width 0.2s, min-width 0.2s"
       overflow="hidden"
       display="flex"
@@ -52,9 +56,9 @@ export default function ConversationSidebar({
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
               >
-                <path d="M0 0H18V2H0V0Z" fill="#5E6272" />
-                <path d="M0 6H18V8H0V6Z" fill="#5E6272" />
-                <path d="M0 12H18V14H0V12Z" fill="#5E6272" />
+                <path d="M0 0H18V2H0V0Z" fill={NEUTRAL_GRAY} />
+                <path d="M0 6H18V8H0V6Z" fill={NEUTRAL_GRAY} />
+                <path d="M0 12H18V14H0V12Z" fill={NEUTRAL_GRAY} />
               </svg>
             }
             variant="ghost"
@@ -67,7 +71,7 @@ export default function ConversationSidebar({
         <Tooltip label="New Conversation" placement="right">
           <IconButton
             aria-label="New Conversation"
-            icon={<MdModeEdit color="#5E6272" size={20} />}
+            icon={<MdModeEdit color={NEUTRAL_GRAY} size={20} />}
             variant="ghost"
             size="sm"
             onClick={onNewConversation}
@@ -76,9 +80,11 @@ export default function ConversationSidebar({
         {isExpanded && (
           <Text
             fontSize="xs"
-            color="#5E6272"
+            color={NEUTRAL_GRAY}
             fontWeight="semibold"
             noOfLines={1}
+            cursor="pointer"
+            onClick={onNewConversation}
           >
             New Conversation
           </Text>
@@ -123,8 +129,8 @@ function ThreadItem({
       py={2}
       cursor="pointer"
       borderRadius="md"
-      bg={isActive ? '#EEEBFF' : 'transparent'}
-      _hover={{ bg: isActive ? '#EEEBFF' : '#F5F5F5' }}
+      bg={isActive ? HOVER_PURPLE : 'transparent'}
+      _hover={{ bg: isActive ? HOVER_PURPLE : '#F5F5F5' }}
       align="center"
       justify="space-between"
       onClick={() => onSelect(thread.id)}
@@ -135,29 +141,29 @@ function ThreadItem({
         <Text
           fontSize="sm"
           noOfLines={1}
-          color={isActive ? '#2800D7' : '#32343C'}
+          color={isActive ? BRAND_PURPLE : TEXT_PRIMARY}
           fontWeight={isActive ? 'semibold' : 'normal'}
         >
           {thread.title}
         </Text>
-        <Text fontSize="xs" color="#5E6272">
+        <Text fontSize="xs" color={NEUTRAL_GRAY}>
           {formatDate(thread.created_at)}
         </Text>
       </Box>
-      {isHovered && (
-        <IconButton
-          aria-label="Delete thread"
-          icon={<MdDelete />}
-          variant="ghost"
-          size="xs"
-          color="#5E6272"
-          _hover={{ color: 'red.500' }}
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(thread.id);
-          }}
-        />
-      )}
+      <IconButton
+        aria-label="Delete thread"
+        icon={<MdDelete />}
+        variant="ghost"
+        size="xs"
+        color={NEUTRAL_GRAY}
+        _hover={{ color: 'red.500' }}
+        opacity={isHovered ? 1 : 0}
+        _focusVisible={{ opacity: 1 }}
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete(thread.id);
+        }}
+      />
     </Flex>
   );
 }

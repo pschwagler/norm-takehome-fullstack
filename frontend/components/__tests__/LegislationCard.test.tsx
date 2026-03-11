@@ -31,7 +31,9 @@ describe('LegislationCard', () => {
     );
     expect(screen.getByText('Northern Edicts')).toBeInTheDocument();
     expect(screen.getByText('12 laws')).toBeInTheDocument();
-    expect(screen.getByText('3/10')).toBeInTheDocument();
+    expect(
+      screen.getByText((text) => text.startsWith('uploaded '))
+    ).toBeInTheDocument();
   });
 
   it('calls onSelect when clicked', async () => {

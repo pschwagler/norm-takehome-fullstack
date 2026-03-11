@@ -2,16 +2,33 @@
 
 import { Avatar, Box, Flex, Text, VStack } from '@chakra-ui/react';
 import { useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkCitationPlugin from '@/lib/remarkCitationPlugin';
+import { CitationContext, MARKDOWN_COMPONENTS } from './MarkdownComponents';
 import NormAvatar from './NormAvatar';
-import CollapsibleCitations from './CollapsibleCitations';
 import type { ActiveMessage } from '@/lib/types';
+import {
+  BRAND_PURPLE,
+  NEUTRAL_GRAY,
+  BORDER,
+  HOVER_PURPLE,
+  TEXT_PRIMARY,
+} from '@/lib/colors';
+
+// Stable reference prevents React remounts during streaming
+const REMARK_PLUGINS = [remarkGfm, remarkCitationPlugin];
 
 interface MessageThreadProps {
   messages: ActiveMessage[];
+  localToGlobal: (messageIndex: number, localCitationIndex: number) => number;
+  onCitationClick?: (globalIndex: number) => void;
 }
 
 export default function MessageThread({
   messages,
+  localToGlobal,
+  onCitationClick,
 }: MessageThreadProps): React.ReactNode {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -23,9 +40,14 @@ export default function MessageThread({
     <VStack spacing={4} align="stretch" w="full" maxW="700px" mx="auto">
       {messages.map((msg, i) =>
         msg.role === 'user' ? (
-          <UserMessage key={i} content={msg.content} />
+          <UserMessage key={`user-${i}`} content={msg.content} />
         ) : (
-          <AssistantMessage key={i} message={msg} />
+          <AssistantMessage
+            key={`assistant-${i}`}
+            message={msg}
+            localToGlobal={(localIdx) => localToGlobal(i, localIdx)}
+            onCitationClick={onCitationClick}
+          />
         )
       )}
       <div ref={bottomRef} />
@@ -37,8 +59,8 @@ function UserMessage({ content }: { content: string }): React.ReactNode {
   return (
     <Flex justifyContent="flex-end" gap={3}>
       <Box
-        bg="#EEEBFF"
-        color="#2800D7"
+        bg={HOVER_PURPLE}
+        color={BRAND_PURPLE}
         borderRadius="lg"
         px={4}
         py={2}
@@ -51,7 +73,7 @@ function UserMessage({ content }: { content: string }): React.ReactNode {
       <Avatar
         name="Tyrion Lannister"
         size="sm"
-        bg="#5E6272"
+        bg={NEUTRAL_GRAY}
         color="white"
         alignSelf="flex-start"
       />
@@ -59,12 +81,18 @@ function UserMessage({ content }: { content: string }): React.ReactNode {
   );
 }
 
+interface AssistantMessageProps {
+  message: ActiveMessage;
+  localToGlobal: (localCitationIndex: number) => number;
+  onCitationClick?: (globalIndex: number) => void;
+}
+
 function AssistantMessage({
   message,
-}: {
-  message: ActiveMessage;
-}): React.ReactNode {
-  const { content, citations, isStreaming } = message;
+  localToGlobal,
+  onCitationClick,
+}: AssistantMessageProps): React.ReactNode {
+  const { content, isStreaming } = message;
 
   return (
     <Flex justifyContent="flex-start" gap={3}>
@@ -75,7 +103,7 @@ function AssistantMessage({
         flex={1}
         bg="white"
         border="1px solid"
-        borderColor="#DBDCE1"
+        borderColor={BORDER}
         borderRadius="lg"
         px={4}
         py={3}
@@ -84,21 +112,21 @@ function AssistantMessage({
         {isStreaming && content === '' ? (
           <LoadingDots />
         ) : (
-          <>
-            <Text
-              fontSize="md"
-              color="#32343C"
-              lineHeight="1.7"
-              whiteSpace="pre-wrap"
-            >
-              {content}
+          <CitationContext.Provider value={{ localToGlobal, onCitationClick }}>
+            <Box fontSize="md" color={TEXT_PRIMARY} lineHeight="1.7">
+              <ReactMarkdown
+                remarkPlugins={REMARK_PLUGINS}
+                components={MARKDOWN_COMPONENTS}
+              >
+                {content}
+              </ReactMarkdown>
               {isStreaming && (
                 <Box
                   as="span"
                   display="inline-block"
                   w="2px"
                   h="1em"
-                  bg="#2800D7"
+                  bg={BRAND_PURPLE}
                   ml={1}
                   animation="blink 1s infinite"
                   verticalAlign="text-bottom"
@@ -110,13 +138,8 @@ function AssistantMessage({
                   }}
                 />
               )}
-            </Text>
-            {!isStreaming && citations.length > 0 && (
-              <Box mt={3}>
-                <CollapsibleCitations citations={citations} />
-              </Box>
-            )}
-          </>
+            </Box>
+          </CitationContext.Provider>
         )}
       </Box>
     </Flex>
@@ -132,7 +155,7 @@ function LoadingDots(): React.ReactNode {
           w="8px"
           h="8px"
           borderRadius="full"
-          bg="#2800D7"
+          bg={BRAND_PURPLE}
           animation={`pulse 1.2s ease-in-out ${i * 0.2}s infinite`}
           sx={{
             '@keyframes pulse': {

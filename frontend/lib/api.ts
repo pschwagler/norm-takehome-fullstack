@@ -11,6 +11,7 @@ import type {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
 
+/** Typed fetch wrapper that prepends the API base URL and handles errors. */
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     ...init,
@@ -32,10 +33,11 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 export interface StreamCallbacks {
   onToken: (token: string) => void;
   onCitations: (citations: Citation[]) => void;
-  onDone: (threadId: number) => void;
+  onDone: (threadId: number, response?: string) => void;
   onError: (error: string) => void;
 }
 
+/** Open an SSE connection to /query and dispatch tokens, citations, and completion via callbacks. */
 export function streamQuery(
   query: string,
   callbacks: StreamCallbacks,
@@ -63,7 +65,7 @@ export function streamQuery(
         callbacks.onCitations(parsed.data);
       } else if (ev.event === 'done') {
         const parsed = JSON.parse(ev.data);
-        callbacks.onDone(parsed.thread_id);
+        callbacks.onDone(parsed.thread_id, parsed.response);
       } else if (ev.event === 'error') {
         const parsed = JSON.parse(ev.data);
         callbacks.onError(parsed.detail ?? 'Query failed');
@@ -118,6 +120,7 @@ export function fetchLegislationById(id: number): Promise<LegislationResponse> {
   return apiFetch(`/legislation/${id}`);
 }
 
+/** Upload a legislation PDF via multipart form data. */
 export async function uploadLegislation(
   file: File,
   name: string,

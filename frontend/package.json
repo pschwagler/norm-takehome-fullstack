@@ -21,7 +21,10 @@
     "next": "14.2.5",
     "react": "^18",
     "react-dom": "^18",
-    "react-icons": "^5.2.1"
+    "react-icons": "^5.2.1",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "unist-util-visit": "^5.1.0"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
@@ -35,7 +38,6 @@
     "eslint": "^8",
     "eslint-config-next": "14.2.5",
     "happy-dom": "^20.8.3",
-    "jsdom": "^28.1.0",
     "postcss": "^8",
     "prettier": "^3.3.3",
     "tailwindcss": "^3.4.1",

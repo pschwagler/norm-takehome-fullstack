@@ -3,6 +3,7 @@
 import { Text, VStack } from '@chakra-ui/react';
 import LegislationCard from './LegislationCard';
 import type { LegislationResponse } from '@/lib/types';
+import { TEXT_PRIMARY, NEUTRAL_GRAY } from '@/lib/colors';
 
 interface LegislationListProps {
   legislationList: LegislationResponse[];
@@ -19,11 +20,11 @@ export default function LegislationList({
 }: LegislationListProps): React.ReactNode {
   return (
     <VStack align="stretch" spacing={2}>
-      <Text fontSize="md" fontWeight="semibold" color="#32343C">
+      <Text fontSize="md" fontWeight="semibold" color={TEXT_PRIMARY}>
         Legislation
       </Text>
       {legislationList.length === 0 ? (
-        <Text fontSize="sm" color="#5E6272">
+        <Text fontSize="sm" color={NEUTRAL_GRAY}>
           No legislation uploaded yet.
         </Text>
       ) : (
