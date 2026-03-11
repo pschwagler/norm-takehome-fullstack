@@ -10,6 +10,8 @@ Styling - should include Norm AI and Westeros Capital Group branding, but consis
 
 V2 (not MVP) - Laws change, may apply to all of westeros, certain regions (North), or city/town level. They also may apply to different classes (e.g., royal family, peasant), but let's assume not for ethical reasons.
 
+This was what was passed in originally to start coming up with PRD:
+
 # MVP
 
 Most important is that what built works, is well tested, matches the codebase style, and is well-organized and quality code, in order to shift and grow the requirements over time.
@@ -49,6 +51,3 @@ Upload non-law documents for review - although should experiment if given time
 - versioning laws -> many fickle rulers in the kingdom may change laws frequently
   - document table has is_current, version number, and effective/sunset dates - fetch current docs only, feed to document IDs to RAG
 - jurisdiction levels, vastly different laws for different regions of the kingdom
-
-Out of scope on UI
-- Legislation viewer, can search legislation and download

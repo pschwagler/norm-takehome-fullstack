@@ -7,7 +7,10 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
-# Build
+# Build -- NEXT_PUBLIC_* vars must be present at build time
+ARG NEXT_PUBLIC_API_URL=http://localhost:80
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 COPY . .
 RUN pnpm build
 

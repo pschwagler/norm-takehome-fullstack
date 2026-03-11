@@ -12,7 +12,12 @@ vi.mock('@/lib/api', () => ({
   streamQuery: vi.fn(),
 }));
 
-import { fetchThreads, fetchThread, streamQuery } from '@/lib/api';
+import {
+  fetchThreads,
+  fetchThread,
+  deleteThread,
+  streamQuery,
+} from '@/lib/api';
 
 function renderWith(ui: React.ReactNode) {
   return render(<ChakraProvider>{ui}</ChakraProvider>);
@@ -160,5 +165,183 @@ describe('Query Page', () => {
     await waitFor(() => {
       expect(fetchThread).toHaveBeenCalledWith(1);
     });
+  });
+
+  it('streaming tokens appear in the message', async () => {
+    const user = userEvent.setup();
+    let capturedCallbacks: StreamCallbacks | null = null;
+    (streamQuery as ReturnType<typeof vi.fn>).mockImplementation(
+      (
+        _query: string,
+        callbacks: StreamCallbacks,
+        _jurisdiction?: string,
+        _threadId?: number
+      ) => {
+        capturedCallbacks = callbacks;
+        return new AbortController();
+      }
+    );
+
+    renderWith(<Page />);
+
+    const input = screen.getByPlaceholderText('Enter your question...');
+    await user.type(input, 'Tell me about trade');
+    await user.click(screen.getByRole('button', { name: 'Ask' }));
+
+    expect(capturedCallbacks).not.toBeNull();
+
+    await act(async () => {
+      capturedCallbacks!.onToken('Hello');
+    });
+    await act(async () => {
+      capturedCallbacks!.onToken(' world');
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Hello world')).toBeInTheDocument();
+    });
+  });
+
+  it('onDone updates thread and reloads threads list', async () => {
+    const user = userEvent.setup();
+    let capturedCallbacks: StreamCallbacks | null = null;
+    (streamQuery as ReturnType<typeof vi.fn>).mockImplementation(
+      (
+        _query: string,
+        callbacks: StreamCallbacks,
+        _jurisdiction?: string,
+        _threadId?: number
+      ) => {
+        capturedCallbacks = callbacks;
+        return new AbortController();
+      }
+    );
+    const reloadedThreads = [
+      {
+        id: 5,
+        title: 'Trade query',
+        jurisdiction: null,
+        message_count: 2,
+        created_at: '2025-01-02T00:00:00',
+      },
+    ];
+    (fetchThreads as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce(reloadedThreads);
+
+    renderWith(<Page />);
+
+    const input = screen.getByPlaceholderText('Enter your question...');
+    await user.type(input, 'Trade query');
+    await user.click(screen.getByRole('button', { name: 'Ask' }));
+
+    expect(capturedCallbacks).not.toBeNull();
+
+    await act(async () => {
+      capturedCallbacks!.onDone(5, 'Final response');
+    });
+
+    await waitFor(() => {
+      expect(fetchThreads).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('handleDeleteThread removes thread from sidebar', async () => {
+    const mockThreads = [
+      {
+        id: 3,
+        title: 'Northern Laws',
+        jurisdiction: null,
+        message_count: 1,
+        created_at: '2025-01-03T00:00:00',
+      },
+    ];
+    (fetchThreads as ReturnType<typeof vi.fn>).mockResolvedValue(mockThreads);
+    (deleteThread as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+
+    renderWith(<Page />);
+
+    await waitFor(() => {
+      expect(fetchThreads).toHaveBeenCalled();
+    });
+
+    const toggleBtn = screen.getByRole('button', { name: 'Toggle sidebar' });
+    await userEvent.click(toggleBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('Northern Laws')).toBeInTheDocument();
+    });
+
+    const { fireEvent } = await import('@testing-library/react');
+    const threadItem = screen.getByText('Northern Laws').closest('[class]')!;
+    fireEvent.mouseEnter(threadItem);
+
+    const deleteBtn = await screen.findByRole('button', {
+      name: 'Delete thread',
+    });
+    fireEvent.click(deleteBtn);
+
+    await waitFor(() => {
+      expect(deleteThread).toHaveBeenCalledWith(3);
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText('Northern Laws')).not.toBeInTheDocument();
+    });
+  });
+
+  it('citations auto-open the drawer', async () => {
+    const user = userEvent.setup();
+    let capturedCallbacks: StreamCallbacks | null = null;
+    (streamQuery as ReturnType<typeof vi.fn>).mockImplementation(
+      (
+        _query: string,
+        callbacks: StreamCallbacks,
+        _jurisdiction?: string,
+        _threadId?: number
+      ) => {
+        capturedCallbacks = callbacks;
+        return new AbortController();
+      }
+    );
+
+    renderWith(<Page />);
+
+    const input = screen.getByPlaceholderText('Enter your question...');
+    await user.type(input, 'What laws govern trade?');
+    await user.click(screen.getByRole('button', { name: 'Ask' }));
+
+    expect(capturedCallbacks).not.toBeNull();
+
+    await act(async () => {
+      capturedCallbacks!.onToken('Trade requires a license.');
+    });
+
+    await act(async () => {
+      capturedCallbacks!.onCitations([
+        {
+          source: 'Laws of the Seven Kingdoms §1',
+          text: 'No trade shall occur without a license.',
+          legislation_id: 1,
+          legislation_name: 'Laws of the Seven Kingdoms',
+          jurisdiction: 'Kingdom-wide',
+        },
+      ]);
+    });
+
+    await act(async () => {
+      capturedCallbacks!.onDone(7, undefined);
+    });
+
+    // The drawer tab always shows when citations > 0; "Citations (1)" appears
+    // in the vertical tab label
+    await waitFor(
+      () => {
+        expect(screen.getAllByText(/Citations \(1\)/).length).toBeGreaterThan(
+          0
+        );
+      },
+      { timeout: 3000 }
+    );
   });
 });

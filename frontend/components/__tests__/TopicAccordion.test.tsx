@@ -12,7 +12,6 @@ function renderWith(ui: React.ReactNode) {
 const groups: LawGroup[] = [
   {
     topic: 'Peace',
-    section_title: null,
     laws: [
       {
         id: 1,

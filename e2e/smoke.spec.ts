@@ -170,9 +170,9 @@ test.describe('Legislation page', () => {
     await expect(card).toBeVisible({ timeout: 10_000 });
     await card.click();
 
-    // Law topic should appear after clicking
+    // Law topic should appear in accordion after clicking
     await expect(
-      page.getByText('Peace & Diplomacy')
+      page.getByRole('button', { name: /Peace & Diplomacy/ }).first()
     ).toBeVisible({ timeout: 10_000 });
   });
 
