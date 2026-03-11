@@ -120,7 +120,7 @@ async def upload_legislation(
         "Uploaded legislation",
         extra={
             "legislation_id": legislation.id,
-            "name": name,
+            "legislation_name": name,
             "laws_count": len(parsed_laws),
         },
     )

@@ -35,6 +35,9 @@ export default function LegislationPage(): React.ReactNode {
     loadLegislation();
   }, [loadLegislation]);
 
+  const selectedLegislation =
+    legislationList.find((l) => l.id === selectedId) ?? null;
+
   function handleFileSelect(file: File) {
     setPendingFile(file);
     onOpen();
@@ -116,7 +119,11 @@ export default function LegislationPage(): React.ReactNode {
           />
         </Box>
         <Box flex={1} overflow="hidden" bg="white">
-          <LegislationBrowser legislationId={selectedId} />
+          <LegislationBrowser
+            legislationId={selectedId}
+            legislationName={selectedLegislation?.name ?? null}
+            jurisdiction={selectedLegislation?.jurisdiction ?? null}
+          />
         </Box>
       </Flex>
       <UploadModal

@@ -1,6 +1,6 @@
 'use client';
 
-import { Flex, IconButton, Text } from '@chakra-ui/react';
+import { Flex, IconButton, Text, Tooltip } from '@chakra-ui/react';
 import { useState } from 'react';
 import { MdDelete } from 'react-icons/md';
 import type { LegislationResponse } from '@/lib/types';
@@ -46,14 +46,16 @@ export default function LegislationCard({
       transition="all 0.15s"
     >
       <Flex gap={4} align="center" flex={1} minW={0}>
-        <Text
-          fontSize="sm"
-          fontWeight="medium"
-          color={isSelected ? BRAND_PURPLE : TEXT_PRIMARY}
-          noOfLines={1}
-        >
-          {legislation.name}
-        </Text>
+        <Tooltip label={legislation.name} placement="right" openDelay={400}>
+          <Text
+            fontSize="sm"
+            fontWeight="medium"
+            color={isSelected ? BRAND_PURPLE : TEXT_PRIMARY}
+            noOfLines={1}
+          >
+            {legislation.name}
+          </Text>
+        </Tooltip>
         <Text fontSize="xs" color={NEUTRAL_GRAY} whiteSpace="nowrap">
           {legislation.laws_count} laws
         </Text>

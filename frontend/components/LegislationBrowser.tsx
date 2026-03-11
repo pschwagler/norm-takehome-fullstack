@@ -1,19 +1,31 @@
 'use client';
 
-import { Box, Flex, Spinner, Text, VStack } from '@chakra-ui/react';
+import {
+  Badge,
+  Box,
+  Flex,
+  Heading,
+  Spinner,
+  Text,
+  VStack,
+} from '@chakra-ui/react';
 import { useEffect, useRef, useState } from 'react';
 import TopicAccordion from './TopicAccordion';
 import LegislationTOC from './LegislationTOC';
 import { fetchLaws } from '@/lib/api';
 import type { LawGroup } from '@/lib/types';
-import { BRAND_PURPLE, NEUTRAL_GRAY } from '@/lib/colors';
+import { BRAND_PURPLE, HOVER_PURPLE, NEUTRAL_GRAY } from '@/lib/colors';
 
 interface LegislationBrowserProps {
   legislationId: number | null;
+  legislationName: string | null;
+  jurisdiction: string | null;
 }
 
 export default function LegislationBrowser({
   legislationId,
+  legislationName,
+  jurisdiction,
 }: LegislationBrowserProps): React.ReactNode {
   const [groups, setGroups] = useState<LawGroup[]>([]);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -66,6 +78,26 @@ export default function LegislationBrowser({
         />
       )}
       <Box ref={scrollContainerRef} flex={1} overflowY="auto" p={6}>
+        {legislationName && (
+          <Flex align="center" gap={3} mb={6}>
+            <Heading size="lg" color={BRAND_PURPLE}>
+              {legislationName}
+            </Heading>
+            {jurisdiction && (
+              <Badge
+                fontSize="xs"
+                px={2}
+                py={0.5}
+                borderRadius="full"
+                bg={HOVER_PURPLE}
+                color={BRAND_PURPLE}
+                fontWeight="medium"
+              >
+                {jurisdiction}
+              </Badge>
+            )}
+          </Flex>
+        )}
         <TopicAccordion groups={groups} />
       </Box>
     </Flex>
