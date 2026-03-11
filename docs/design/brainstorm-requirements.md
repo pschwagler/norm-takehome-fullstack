@@ -10,8 +10,6 @@ Styling - should include Norm AI and Westeros Capital Group branding, but consis
 
 V2 (not MVP) - Laws change, may apply to all of westeros, certain regions (North), or city/town level. They also may apply to different classes (e.g., royal family, peasant), but let's assume not for ethical reasons.
 
-This was what was passed in originally to start coming up with PRD:
-
 # MVP
 
 Most important is that what built works, is well tested, matches the codebase style, and is well-organized and quality code, in order to shift and grow the requirements over time.
