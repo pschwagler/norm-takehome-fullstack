@@ -1,9 +1,44 @@
-This repository contains a client and server codebase. 
+# Westeros Legal Compliance Assistant
 
-## Server Repository:
+Full-stack RAG application for querying Westeros Capital Group's legal compliance obligations. FastAPI + LlamaIndex backend, Next.js + Chakra UI frontend.
 
-This codebase contains a list of laws (`docs/laws.pdf`) taken from the fictional series “Game of Thrones” (randomly pulled from a wiki fandom site... unfortunately knowledge of the series does not provide an edge on this assignment). Your task is to implement a new service (described in take home exercise document) and provide access to that service via a FastAPI endpoint running in a docker container. Please replace this readme with the steps required to run your app.
+## Prerequisites
 
-## Client Repository 
+- Node.js 18+
+- Python 3.11+
+- Docker & Docker Compose (for containerized builds)
+- An `OPENAI_API_KEY` in a `.env` file at the project root
 
-In the `frontend` folder you'll find a light NextJS app with it's own README including instructions to run. Your task here is to build a minimal client experience that utilizes the service build in part 1.
+## Running
+
+### Docker (recommended)
+
+```sh
+npm run build          # build and start both services via Docker Compose
+```
+
+Backend runs on `http://localhost:80`, frontend on `http://localhost:3000`.
+
+### Local development
+
+```sh
+npm run dev            # start backend (port 8000) and frontend (port 3000) concurrently
+npm run dev:backend    # backend only (uvicorn with --reload)
+npm run dev:frontend   # frontend only (Next.js dev server)
+```
+
+## Testing
+
+```sh
+npm test               # run backend and frontend tests sequentially
+npm run test:backend   # pytest
+npm run test:frontend  # vitest
+```
+
+## Linting & Formatting
+
+```sh
+npm run lint           # ESLint (frontend)
+npm run format         # Prettier write (frontend)
+npm run format:check   # Prettier check (frontend)
+```

@@ -12,7 +12,6 @@
     "dev:backend": "uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --env-file .env",
     "dev:frontend": "npm run dev --prefix frontend",
     "build": "docker compose up --build",
-    "build:watch": "docker compose up --build --watch",
     "test": "npm run test:backend && npm run test:frontend",
     "test:backend": "pytest tests/",
     "test:frontend": "npm run test:run --prefix frontend",
